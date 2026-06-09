@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA-Cafetería</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="./css/inicio.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="header-brand">
+                <i class="bi bi-cup-hot-fill"></i>
+                <span>The Coffee Spot</span>
+            </div>
+            <div class="header-actions">
+                <button class="btn-icon">
+                    <i class="bi bi-bell"></i>
+                    <span class="notification-badge">3</span>
+                </button>
+                <button class="btn-icon">
+                    <i class="bi bi-person-circle"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <div class="welcome-message">
+                    <h1 class="welcome-title">¡Buen día, equipo! ☕</h1>
+                    <p class="welcome-subtitle">Hoy es un gran día para hacer sonreír a nuestros clientes</p>
+                </div>
+                <div class="welcome-card">
+                    <i class="bi bi-emoji-smile"></i>
+                    <div>
+                        <strong>¡Tú haces la diferencia!</strong>
+                        <small>Cada café que preparas con cariño marca la experiencia de alguien.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon bg-success-subtle">
+                        <i class="bi bi-currency-dollar"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Ventas Hoy</span>
+                        <span class="stat-value">$4,280.50</span>
+                        <span class="stat-change positive">
+                            <i class="bi bi-arrow-up"></i> 12% vs ayer
+                        </span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon bg-warning-subtle">
+                        <i class="bi bi-receipt"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Órdenes</span>
+                        <span class="stat-value">24</span>
+                        <span class="stat-change positive">
+                            <i class="bi bi-arrow-up"></i> 5 nuevas
+                        </span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon bg-info-subtle">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Clientes</span>
+                        <span class="stat-value">87</span>
+                        <span class="stat-change positive">
+                            <i class="bi bi-arrow-up"></i> 8% más
+                        </span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon bg-danger-subtle">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Stock Bajo</span>
+                        <span class="stat-value">3</span>
+                        <span class="stat-change negative">
+                            <i class="bi bi-arrow-down"></i> Atención
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <!-- Ventas del Día -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-graph-up"></i>
+                            Ventas del Día
+                        </h5>
+                        <select class="form-select-sm">
+                            <option>Hoy</option>
+                            <option>Ayer</option>
+                            <option>Esta semana</option>
+                        </select>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-wrapper">
+                            <canvas id="salesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Productos Más Vendidos -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-star"></i>
+                            Los Favoritos de Hoy
+                        </h5>
+                        <a href="./paginas/productos.html" class="view-all">Ver Todo</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-wrapper">
+                            <canvas id="productsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button class="action-btn action-btn-primary">
+                    <i class="bi bi-cart-plus"></i>
+                    <span>Nueva Venta</span>
+                </button>
+                <button class="action-btn action-btn-secondary">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>Agregar Producto</span>
+                </button>
+            </div>
+
+            <!-- Low Stock Alerts -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="bi bi-exclamation-triangle text-warning"></i>
+                        Alertas de Stock Bajo
+                    </h5>
+                    <a href="./paginas/inventario.html" class="view-all">Ver Todo</a>
+                </div>
+                <div class="card-body">
+                    <div class="alert-item">
+                        <div class="alert-icon">
+                            <i class="bi bi-cup-hot"></i>
+                        </div>
+                        <div class="alert-content">
+                            <h6>Espresso Roast Beans</h6>
+                            <small>SKU: COF-001 • Bebidas</small>
+                        </div>
+                        <div class="stock-info">
+                            <span class="stock-label">Stock</span>
+                            <span class="badge badge-danger">5 un</span>
+                        </div>
+                        <button class="btn-icon">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                    </div>
+
+                    <div class="alert-item">
+                        <div class="alert-icon">
+                            <i class="bi bi-droplet"></i>
+                        </div>
+                        <div class="alert-content">
+                            <h6>Oat Milk 1L (Pack)</h6>
+                            <small>SKU: MLK-422 • Lácteos</small>
+                        </div>
+                        <div class="stock-info">
+                            <span class="stock-label">Stock</span>
+                            <span class="badge badge-danger">2 un</span>
+                        </div>
+                        <button class="btn-icon">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                    </div>
+
+                    <div class="alert-item">
+                        <div class="alert-icon">
+                            <i class="bi bi-basket"></i>
+                        </div>
+                        <div class="alert-content">
+                            <h6>Paper Filters V60</h6>
+                            <small>SKU: ACC-098 • Suministros</small>
+                        </div>
+                        <div class="stock-info">
+                            <span class="stock-label">Stock</span>
+                            <span class="badge badge-warning">12 un</span>
+                        </div>
+                        <button class="btn-icon">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Sales -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="bi bi-clock-history"></i>
+                        Ventas Recientes
+                    </h5>
+                    <a href="./paginas/ventas.html" class="view-all">Ver Todo</a>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th>Orden</th>
+                                <th>Producto</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>#1234</td>
+                                <td>Cappuccino x2</td>
+                                <td>$45.00</td>
+                                <td><span class="badge badge-success">Completada</span></td>
+                            </tr>
+                            <tr>
+                                <td>#1233</td>
+                                <td>Latte + Croissant</td>
+                                <td>$32.50</td>
+                                <td><span class="badge badge-success">Completada</span></td>
+                            </tr>
+                            <tr>
+                                <td>#1232</td>
+                                <td>Espresso x3</td>
+                                <td>$28.00</td>
+                                <td><span class="badge badge-warning">En proceso</span></td>
+                            </tr>
+                            <tr>
+                                <td>#1231</td>
+                                <td>Mocha + Muffin</td>
+                                <td>$56.75</td>
+                                <td><span class="badge badge-success">Completada</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- System Health -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="bi bi-shield-check"></i>
+                        Estado del Sistema
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="system-item">
+                        <i class="bi bi-cloud-check text-success"></i>
+                        <span>Sincronización en la nube activa</span>
+                    </div>
+                    <div class="system-item">
+                        <i class="bi bi-database"></i>
+                        <span>Último backup: hace 2 horas</span>
+                    </div>
+                    <div class="system-item">
+                        <i class="bi bi-wifi text-success"></i>
+                        <span>Conexión estable</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item active">
+            <i class="bi bi-grid-3x3-gap"></i>
+            <span>Inicio</span>
+        </a>
+        <a href="./paginas/inventario.html" class="nav-item">
+            <i class="bi bi-box-seam"></i>
+            <span>Inventario</span>
+        </a>
+        <a href="./paginas/ventas.html" class="nav-item">
+            <i class="bi bi-cart3"></i>
+            <span>Ventas</span>
+        </a>
+        <a href="./paginas/estadisticos.html" class="nav-item">
+            <i class="bi bi-bar-chart"></i>
+            <span>Estadísticos</span>
+        </a>
+        <a href="./paginas/ajustes.html" class="nav-item">
+            <i class="bi bi-gear"></i>
+            <span>Ajustes</span>
+        </a>
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./js/inicio.js"></script>
+</body>
+
+</html>
