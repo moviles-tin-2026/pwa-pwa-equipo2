@@ -1,0 +1,320 @@
+/* VARIABLES DE DISEÑO BASE */
+:root {
+    --bg-app: #f4eae4;     
+    --bg-white: #ffffff;
+    --text-main: #3d2414;  
+    --text-muted: #8c766b; 
+    --brand-dark: #4a2310; 
+    --accent-red-bg: #fce8e6; 
+    --accent-red-text: #b82c1c; 
+    --border-color: #e5d5cb;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* El body ahora es el lienzo completo sin importar el dispositivo */
+body {
+    background-color: var(--bg-app);
+    min-height: 100vh;
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+}
+
+/* CONTENEDOR PRINCIPAL: Ocupa toda la pantalla siempre */
+.app-container {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* HEADER (Ocupa el 100% del ancho) */
+.app-header {
+    background-color: var(--bg-white);
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-icon-box {
+    background-color: var(--brand-dark);
+    color: var(--bg-white);
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.brand-text h1 {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.brand-text p {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+/* ÁREA DE CONTENIDO */
+.app-content {
+    flex: 1;
+    padding: 20px 24px 100px 24px; /* Padding extra abajo para evitar colisión con el nav */
+    width: 100%;
+    max-width: 1200px; /* Evita que en pantallas ultra anchas se deforme demasiado */
+    margin: 0 auto;    /* Lo centra estéticamente en PCs muy grandes */
+}
+
+/* BARRA DE BÚSQUEDA */
+.search-container {
+    background-color: var(--bg-white);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    gap: 10px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.search-icon, .filter-icon {
+    color: var(--text-muted);
+}
+
+.search-input {
+    border: none;
+    outline: none;
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-main);
+    background: transparent;
+}
+
+/* SECCIÓN MÉTRICAS: Responsiva */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 Columnas igual que en tu captura */
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.card {
+    background-color: var(--bg-white);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.card-alert {
+    background-color: var(--accent-red-bg);
+    border: 1px solid #f5c2be;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.card-title { font-size: 14px; font-weight: 600; }
+.card-icon { color: var(--text-muted); font-size: 22px; }
+.card-icon-alert { color: var(--accent-red-text); font-size: 22px; }
+.card-value { font-size: 32px; font-weight: 700; }
+.card-value-alert { font-size: 32px; font-weight: 700; color: var(--accent-red-text); }
+.card-subtext { font-size: 12px; color: var(--text-muted); }
+.card-subtext-alert { font-size: 12px; color: var(--accent-red-text); }
+
+/* SECCIÓN DE PRODUCTOS COMPLETA */
+.products-section {
+    background-color: var(--bg-white);
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 16px;
+}
+
+.section-header h2 { font-size: 16px; font-weight: 700; }
+.filter-badge { font-size: 11px; font-weight: 700; color: #627b94; }
+
+.products-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* FILAS DE PRODUCTOS */
+.product-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #fcf8f6;
+}
+
+.product-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.product-img-placeholder {
+    width: 58px;
+    height: 58px;
+    background-color: #e8e8e8;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #aaaaaa;
+}
+
+.product-info { flex: 1; }
+.product-info h3 { font-size: 14px; font-weight: 600; }
+.product-info .sku { font-size: 11px; font-family: monospace; color: var(--text-muted); margin-bottom: 4px; }
+
+.status { font-size: 11px; font-weight: 700; }
+.status-in-stock { color: #5c7869; }
+.status-low-stock { color: var(--accent-red-text); }
+
+.product-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.price { font-size: 14px; font-weight: 700; }
+.badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 12px; }
+.badge-brown { background-color: var(--brand-dark); color: var(--bg-white); }
+.badge-red { background-color: var(--accent-red-bg); color: var(--accent-red-text); }
+
+.view-all-btn {
+    width: 100%;
+    background-color: var(--bg-app);
+    border: none;
+    color: var(--text-main);
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 20px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.view-all-btn:hover {
+    background-color: #ebdcd2;
+}
+
+/* BOTÓN FLOTANTE (FAB) */
+.fab-btn {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    background-color: var(--brand-dark);
+    color: var(--bg-white);
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    z-index: 99;
+    cursor: pointer;
+}
+
+/* NAVEGACIÓN INFERIOR (Cubre el 100% de la pantalla abajo) */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--bg-white);
+    height: 75px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid var(--border-color);
+    padding-bottom: 8px;
+    z-index: 100;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.nav-item span:first-child { font-size: 24px; }
+.nav-item.active { color: var(--text-main); font-weight: 600; }
+
+.active-bg {
+    background-color: var(--accent-red-bg);
+    color: var(--brand-dark);
+    padding: 6px 20px;
+    border-radius: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+/* =======================================================
+   💻 OPTIMIZACIONES EXCLUSIVAS PARA PANTALLAS GRANDES (PC)
+   ======================================================= */
+@media (min-width: 992px) {
+    /* En PC hacemos que los productos se organicen en un sistema de dos columnas para no quedar excesivamente largos */
+    .products-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    
+    .product-item {
+        border-bottom: 1px solid #fcf8f6;
+        padding-bottom: 8px;
+    }
+}
