@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyME-Sync - Control de Stock</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- HEADER (Cubre todo el ancho superior) -->
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="brand-icon-box">
+                    <span class="material-symbols-rounded">database</span>
+                </div>
+                <div class="brand-text">
+                    <h1>PyME-Sync</h1>
+                    <p>CONTROL DE STOCK</p>
+                </div>
+            </div>
+            <button class="icon-btn">
+                <span class="material-symbols-rounded">settings</span>
+            </button>
+        </header>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="app-content">
+            
+            <!-- BARRA DE BÚSQUEDA -->
+            <div class="search-container">
+                <span class="material-symbols-rounded search-icon">search</span>
+                <input type="text" placeholder="Buscar productos..." class="search-input">
+                <span class="material-symbols-rounded filter-icon">tune</span>
+            </div>
+
+            <!-- TARJETAS DE RESUMEN (Se adaptan a 2 columnas en PC) -->
+            <div class="summary-cards">
+                <div class="card card-total">
+                    <div class="card-header">
+                        <span class="card-title">Total Items</span>
+                        <span class="material-symbols-rounded card-icon">inventory_2</span>
+                    </div>
+                    <div class="card-value">8</div>
+                    <div class="card-subtext">(203 unidades en total)</div>
+                </div>
+
+                <div class="card card-alert">
+                    <div class="card-header">
+                        <span class="card-title">Stock Bajo</span>
+                        <span class="material-symbols-rounded card-icon-alert">warning</span>
+                    </div>
+                    <div class="card-value-alert">3</div>
+                    <div class="card-subtext-alert">requieren reabastecimiento</div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN DE PRODUCTOS -->
+            <section class="products-section">
+                <div class="section-header">
+                    <h2>Stock de Productos</h2>
+                    <span class="filter-badge">FILTRADO POR: TODOS</span>
+                </div>
+
+                <div class="products-list">
+                    
+                    <!-- Producto 1 -->
+                    <div class="product-item">
+                        <div class="product-img-placeholder">
+                            <span class="material-symbols-rounded">schedule</span>
+                        </div>
+                        <div class="product-info">
+                            <h3>Reloj Minimalista v2</h3>
+                            <p class="sku">SKU: REL-2024-W</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$45.00</span>
+                            <span class="badge badge-brown">84 unidades</span>
+                        </div>
+                    </div>
+
+                    <!-- Producto 2 -->
+                    <div class="product-item">
+                        <div class="product-img-placeholder">
+                            <span class="material-symbols-rounded">headphones</span>
+                        </div>
+                        <div class="product-info">
+                            <h3>Auriculares Studio Pro</h3>
+                            <p class="sku">SKU: AUD-PRO-BLK</p>
+                            <span class="status status-low-stock">● STOCK BAJO</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$189.99</span>
+                            <span class="badge badge-red">3 unidades</span>
+                        </div>
+                    </div>
+
+                    <!-- Producto 3 -->
+                    <div class="product-item">
+                        <div class="product-img-placeholder">
+                            <span class="material-symbols-rounded">photo_camera</span>
+                        </div>
+                        <div class="product-info">
+                            <h3>Cámara Retro-Link</h3>
+                            <p class="sku">SKU: CAM-VNT-88</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$320.00</span>
+                            <span class="badge badge-brown">12 unidades</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <button class="view-all-btn">Ver todos los productos (8)</button>
+            </section>
+        </main>
+
+        <!-- BOTÓN FLOTANTE (FAB) -->
+        <button class="fab-btn">
+            <span class="material-symbols-rounded">add</span>
+        </button>
+
+        <!-- NAVEGACIÓN INFERIOR (Cubre todo el ancho inferior) -->
+        <nav class="bottom-nav">
+            <div class="nav-item">
+                <span class="material-symbols-rounded">dashboard</span>
+                <span>Home</span>
+            </div>
+            <div class="nav-item active">
+                <div class="active-bg">
+                    <span class="material-symbols-rounded">inventory</span>
+                </div>
+                <span>Stock</span>
+            </div>
+            <div class="nav-item">
+                <span class="material-symbols-rounded">shopping_cart</span>
+                <span>Venta</span>
+            </div>
+            <div class="nav-item">
+                <span class="material-symbols-rounded">bar_chart</span>
+                <span>Métricas</span>
+            </div>
+            <div class="nav-item">
+                <span class="material-symbols-rounded">manage_accounts</span>
+                <span>Admin</span>
+            </div>
+        </nav>
+
+    </div>
+
+</body>
+</html>
