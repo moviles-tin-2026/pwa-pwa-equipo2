@@ -1,4 +1,6 @@
-/* VARIABLES DE DISEÑO BASE */
+/* ==========================================================================
+   VARIABLES DE DISEÑO BASE
+   ========================================================================== */
 :root {
     --bg-app: #f4eae4;     
     --bg-white: #ffffff;
@@ -10,6 +12,9 @@
     --border-color: #e5d5cb;
 }
 
+/* ==========================================================================
+   RESETS Y CONFIGURACIÓN GLOBAL
+   ========================================================================== */
 * {
     margin: 0;
     padding: 0;
@@ -17,16 +22,29 @@
     font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* El body ahora es el lienzo completo sin importar el dispositivo */
 body {
     background-color: var(--bg-app);
     min-height: 100vh;
     color: var(--text-main);
     display: flex;
     flex-direction: column;
+    position: relative;
+    overflow-x: hidden;
 }
 
-/* CONTENEDOR PRINCIPAL: Ocupa toda la pantalla siempre */
+/* ==========================================================================
+   CANVAS DE FONDOS (Granos de Café Animados)
+   ========================================================================== */
+#coffeeBackground {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;          /* Detrás de la interfaz */
+    pointer-events: none; /* No interrumpe los clics ni el scroll */
+}
+
 .app-container {
     width: 100%;
     min-height: 100vh;
@@ -35,9 +53,13 @@ body {
     position: relative;
 }
 
-/* HEADER (Ocupa el 100% del ancho) */
+/* ==========================================================================
+   HEADER (Efecto esmerilado translúcido)
+   ========================================================================== */
 .app-header {
-    background-color: var(--bg-white);
+    background-color: rgba(255, 255, 255, 0.85); 
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); 
     padding: 16px 24px;
     display: flex;
     justify-content: space-between;
@@ -48,114 +70,211 @@ body {
     z-index: 100;
 }
 
-.header-brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+.header-brand { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
 }
 
-.brand-icon-box {
-    background-color: var(--brand-dark);
-    color: var(--bg-white);
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+.brand-icon-box { 
+    background-color: var(--brand-dark); 
+    color: var(--bg-white); 
+    width: 40px; 
+    height: 40px; 
+    border-radius: 12px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
 }
 
-.brand-text h1 {
-    font-size: 16px;
-    font-weight: 700;
+.brand-text h1 { 
+    font-size: 16px; 
+    font-weight: 700; 
 }
 
-.brand-text p {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
+.brand-text p { 
+    font-size: 10px; 
+    font-weight: 600; 
+    letter-spacing: 0.5px; 
+    color: var(--text-muted); 
 }
 
-.icon-btn {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
+.icon-btn { 
+    background: none; 
+    border: none; 
+    color: var(--text-muted); 
+    cursor: pointer; 
 }
 
-/* ÁREA DE CONTENIDO */
+/* ==========================================================================
+   ÁREA DE CONTENIDO PRINCIPAL
+   ========================================================================== */
 .app-content {
     flex: 1;
-    padding: 20px 24px 100px 24px; /* Padding extra abajo para evitar colisión con el nav */
+    padding: 20px 24px 100px 24px; 
     width: 100%;
-    max-width: 1200px; /* Evita que en pantallas ultra anchas se deforme demasiado */
-    margin: 0 auto;    /* Lo centra estéticamente en PCs muy grandes */
+    max-width: 1200px; 
+    margin: 0 auto;    
 }
 
-/* BARRA DE BÚSQUEDA */
+/* BÚSQUEDA Y FILTRADO */
+.search-wrapper {
+    position: relative;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
 .search-container {
-    background-color: var(--bg-white);
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(4px);
     border-radius: 16px;
     display: flex;
     align-items: center;
     padding: 14px 16px;
     gap: 10px;
-    margin-bottom: 20px;
     border: 1px solid var(--border-color);
 }
 
-.search-icon, .filter-icon {
-    color: var(--text-muted);
+.search-icon, .filter-icon { 
+    color: var(--text-muted); 
 }
 
-.search-input {
-    border: none;
-    outline: none;
-    flex: 1;
-    font-size: 14px;
+.filter-icon { 
+    cursor: pointer; 
+    padding: 4px; 
+    border-radius: 8px; 
+    transition: background 0.2s, color 0.2s; 
+}
+
+.filter-icon:hover { 
+    background-color: var(--bg-app); 
+    color: var(--brand-dark); 
+}
+
+.search-input { 
+    border: none; 
+    outline: none; 
+    flex: 1; 
+    font-size: 14px; 
+    color: var(--text-main); 
+    background: transparent; 
+}
+
+/* DESPLEGABLE FLOTANTE */
+.filter-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background-color: var(--bg-white);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(74, 35, 16, 0.12);
+    width: 240px;
+    z-index: 110;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+}
+
+.filter-dropdown.show {
+    max-height: 300px;
+    opacity: 1;
+}
+
+.filter-option {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
     color: var(--text-main);
-    background: transparent;
+    cursor: pointer;
+    transition: background 0.2s;
 }
 
-/* SECCIÓN MÉTRICAS: Responsiva */
+.filter-option:hover { 
+    background-color: var(--bg-app); 
+}
+
+.filter-option.active { 
+    background-color: var(--brand-dark); 
+    color: var(--bg-white); 
+    font-weight: 600; 
+}
+
+/* ==========================================================================
+   TARJETAS DE MÉTRICAS (Cristal Esmerilado)
+   ========================================================================== */
 .summary-cards {
     display: grid;
-    grid-template-columns: repeat(2, 1fr); /* 2 Columnas igual que en tu captura */
+    grid-template-columns: repeat(2, 1fr); 
     gap: 16px;
     margin-bottom: 24px;
 }
 
-.card {
-    background-color: var(--bg-white);
-    border-radius: 16px;
-    padding: 16px;
-    border: 1px solid var(--border-color);
+.card { 
+    background-color: rgba(255, 255, 255, 0.82); 
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 16px; 
+    padding: 16px; 
+    border: 1px solid var(--border-color); 
 }
 
-.card-alert {
-    background-color: var(--accent-red-bg);
-    border: 1px solid #f5c2be;
+.card-alert { 
+    background-color: rgba(252, 232, 230, 0.82); 
+    border: 1px solid #f5c2be; 
 }
 
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+.card-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 8px; 
 }
 
-.card-title { font-size: 14px; font-weight: 600; }
-.card-icon { color: var(--text-muted); font-size: 22px; }
-.card-icon-alert { color: var(--accent-red-text); font-size: 22px; }
-.card-value { font-size: 32px; font-weight: 700; }
-.card-value-alert { font-size: 32px; font-weight: 700; color: var(--accent-red-text); }
-.card-subtext { font-size: 12px; color: var(--text-muted); }
-.card-subtext-alert { font-size: 12px; color: var(--accent-red-text); }
+.card-title { 
+    font-size: 14px; 
+    font-weight: 600; 
+}
 
-/* SECCIÓN DE PRODUCTOS COMPLETA */
+.card-icon { 
+    color: var(--text-muted); 
+    font-size: 22px; 
+}
+
+.card-icon-alert { 
+    color: var(--accent-red-text); 
+    font-size: 22px; 
+}
+
+.card-value { 
+    font-size: 32px; 
+    font-weight: 700; 
+}
+
+.card-value-alert { 
+    font-size: 32px; 
+    font-weight: 700; 
+    color: var(--accent-red-text); 
+}
+
+.card-subtext { 
+    font-size: 12px; 
+    color: var(--text-muted); 
+}
+
+.card-subtext-alert { 
+    font-size: 12px; 
+    color: var(--accent-red-text); 
+}
+
+/* ==========================================================================
+   SECCIÓN DE PRODUCTOS (Contenedor Principal de la Lista)
+   ========================================================================== */
 .products-section {
-    background-color: var(--bg-white);
+    background-color: rgba(255, 255, 255, 0.85); 
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border-radius: 20px;
     padding: 20px;
     border: 1px solid var(--border-color);
@@ -170,22 +289,31 @@ body {
     margin-bottom: 16px;
 }
 
-.section-header h2 { font-size: 16px; font-weight: 700; }
-.filter-badge { font-size: 11px; font-weight: 700; color: #627b94; }
+.section-header h2 { 
+    font-size: 16px; 
+    font-weight: 700; 
+}
 
-.products-list {
+.filter-badge { 
+    font-size: 11px; 
+    font-weight: 700; 
+    color: #627b94; 
+}
+
+.products-container {
     display: flex;
     flex-direction: column;
     gap: 16px;
 }
 
-/* FILAS DE PRODUCTOS */
+/* ELEMENTOS INDIVIDUALE DE LA FILA */
 .product-item {
     display: flex;
     align-items: center;
     gap: 16px;
     padding-bottom: 14px;
     border-bottom: 1px solid #fcf8f6;
+    transition: opacity 0.2s ease;
 }
 
 .product-item:last-child {
@@ -196,33 +324,89 @@ body {
 .product-img-placeholder {
     width: 58px;
     height: 58px;
-    background-color: #e8e8e8;
+    background-color: rgba(247, 243, 240, 0.9); 
     border-radius: 12px;
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #aaaaaa;
+    color: var(--text-muted);
 }
 
-.product-info { flex: 1; }
-.product-info h3 { font-size: 14px; font-weight: 600; }
-.product-info .sku { font-size: 11px; font-family: monospace; color: var(--text-muted); margin-bottom: 4px; }
-
-.status { font-size: 11px; font-weight: 700; }
-.status-in-stock { color: #5c7869; }
-.status-low-stock { color: var(--accent-red-text); }
-
-.product-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
+.product-info { 
+    flex: 1; 
 }
 
-.price { font-size: 14px; font-weight: 700; }
-.badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 12px; }
-.badge-brown { background-color: var(--brand-dark); color: var(--bg-white); }
-.badge-red { background-color: var(--accent-red-bg); color: var(--accent-red-text); }
+.product-info h3 { 
+    font-size: 14px; 
+    font-weight: 600; 
+}
+
+.product-info .sku { 
+    font-size: 11px; 
+    font-family: monospace; 
+    color: var(--text-muted); 
+    margin-bottom: 4px; 
+}
+
+.status { 
+    font-size: 11px; 
+    font-weight: 700; 
+}
+
+.status-in-stock { 
+    color: #5c7869; 
+}
+
+.status-low-stock { 
+    color: var(--accent-red-text); 
+}
+
+.product-meta { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: flex-end; 
+    gap: 8px; 
+}
+
+.price { 
+    font-size: 14px; 
+    font-weight: 700; 
+}
+
+.badge { 
+    font-size: 12px; 
+    font-weight: 600; 
+    padding: 4px 10px; 
+    border-radius: 12px; 
+}
+
+.badge-brown { 
+    background-color: var(--brand-dark); 
+    color: var(--bg-white); 
+}
+
+.badge-red { 
+    background-color: var(--accent-red-bg); 
+    color: var(--accent-red-text); 
+}
+
+/* AJUSTES DE BÚSQUEDA SIN RESPUESTA */
+.no-results {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+.no-results span { 
+    font-size: 48px; 
+    margin-bottom: 10px; 
+    color: var(--border-color); 
+}
+
+.no-results p { 
+    font-size: 14px; 
+    font-weight: 500; 
+}
 
 .view-all-btn {
     width: 100%;
@@ -235,14 +419,12 @@ body {
     font-weight: 600;
     margin-top: 20px;
     cursor: pointer;
-    transition: 0.2s;
+    transition: background-color 0.2s;
 }
 
-.view-all-btn:hover {
-    background-color: #ebdcd2;
-}
-
-/* BOTÓN FLOTANTE (FAB) */
+/* ==========================================================================
+   BOTÓN ACCIÓN FLOTANTE (FAB)
+   ========================================================================== */
 .fab-btn {
     position: fixed;
     bottom: 90px;
@@ -261,13 +443,17 @@ body {
     cursor: pointer;
 }
 
-/* NAVEGACIÓN INFERIOR (Cubre el 100% de la pantalla abajo) */
+/* ==========================================================================
+   NAVEGACIÓN INFERIOR (Estilo móvil fija)
+   ========================================================================== */
 .bottom-nav {
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
-    background-color: var(--bg-white);
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     height: 75px;
     display: flex;
     justify-content: space-around;
@@ -277,37 +463,42 @@ body {
     z-index: 100;
 }
 
-.nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: 0.2s;
+.nav-item { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    color: var(--text-muted); 
+    font-size: 12px; 
+    font-weight: 500; 
+    cursor: pointer; 
+    transition: color 0.2s; 
 }
 
-.nav-item span:first-child { font-size: 24px; }
-.nav-item.active { color: var(--text-main); font-weight: 600; }
-
-.active-bg {
-    background-color: var(--accent-red-bg);
-    color: var(--brand-dark);
-    padding: 6px 20px;
-    border-radius: 16px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 2px;
+.nav-item span:first-child { 
+    font-size: 24px; 
 }
 
-/* =======================================================
-   💻 OPTIMIZACIONES EXCLUSIVAS PARA PANTALLAS GRANDES (PC)
-   ======================================================= */
+.nav-item.active { 
+    color: var(--text-main); 
+    font-weight: 600; 
+}
+
+.active-bg { 
+    background-color: var(--accent-red-bg); 
+    color: var(--brand-dark); 
+    padding: 6px 20px; 
+    border-radius: 16px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    margin-bottom: 2px; 
+}
+
+/* ==========================================================================
+   SOPORTE DE VISTA ESCRITORIO PC (Estructura en 2 Columnas)
+   ========================================================================== */
 @media (min-width: 992px) {
-    /* En PC hacemos que los productos se organicen en un sistema de dos columnas para no quedar excesivamente largos */
-    .products-list {
+    .products-container {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 20px;

@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PyME-Sync - Control de Stock</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Google Fonts & Material Symbols -->
+    <title>PyME-Sync - Control de Stock Cafetería</title>
+    <link rel="stylesheet" href="../css/inventario.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,13 +12,14 @@
 </head>
 <body>
 
+    <canvas id="coffeeBackground"></canvas>
+
     <div class="app-container">
         
-        <!-- HEADER (Cubre todo el ancho superior) -->
         <header class="app-header">
             <div class="header-brand">
                 <div class="brand-icon-box">
-                    <span class="material-symbols-rounded">database</span>
+                    <span class="material-symbols-rounded">coffee</span>
                 </div>
                 <div class="brand-text">
                     <h1>PyME-Sync</h1>
@@ -31,25 +31,32 @@
             </button>
         </header>
 
-        <!-- CONTENIDO PRINCIPAL -->
         <main class="app-content">
             
-            <!-- BARRA DE BÚSQUEDA -->
-            <div class="search-container">
-                <span class="material-symbols-rounded search-icon">search</span>
-                <input type="text" placeholder="Buscar productos..." class="search-input">
-                <span class="material-symbols-rounded filter-icon">tune</span>
+            <div class="search-wrapper">
+                <div class="search-container">
+                    <span class="material-symbols-rounded search-icon">search</span>
+                    <input type="text" id="searchInput" placeholder="Buscar insumos o productos..." class="search-input" onkeyup="filterProducts()">
+                    <span class="material-symbols-rounded filter-icon" id="filterMenuBtn" onclick="toggleFilterMenu()">tune</span>
+                </div>
+
+                <div class="filter-dropdown" id="filterDropdown">
+                    <div class="filter-option active" onclick="setCategory('todos', this)">Todos los insumos</div>
+                    <div class="filter-option" onclick="setCategory('cafe', this)">Café en Grano</div>
+                    <div class="filter-option" onclick="setCategory('leche', this)">Leches y Alternativas</div>
+                    <div class="filter-option" onclick="setCategory('jarabe', this)">Jarabes y Salsas</div>
+                    <div class="filter-option" onclick="setCategory('reposteria', this)">Repostería y Toppings</div>
+                </div>
             </div>
 
-            <!-- TARJETAS DE RESUMEN (Se adaptan a 2 columnas en PC) -->
             <div class="summary-cards">
                 <div class="card card-total">
                     <div class="card-header">
                         <span class="card-title">Total Items</span>
                         <span class="material-symbols-rounded card-icon">inventory_2</span>
                     </div>
-                    <div class="card-value">8</div>
-                    <div class="card-subtext">(203 unidades en total)</div>
+                    <div class="card-value" id="totalItemsCount">20</div>
+                    <div class="card-subtext">visibles en catálogo</div>
                 </div>
 
                 <div class="card card-alert">
@@ -57,80 +64,294 @@
                         <span class="card-title">Stock Bajo</span>
                         <span class="material-symbols-rounded card-icon-alert">warning</span>
                     </div>
-                    <div class="card-value-alert">3</div>
-                    <div class="card-subtext-alert">requieren reabastecimiento</div>
+                    <div class="card-value-alert" id="lowStockCount">6</div>
+                    <div class="card-subtext-alert">requieren atención</div>
                 </div>
             </div>
 
-            <!-- SECCIÓN DE PRODUCTOS -->
             <section class="products-section">
                 <div class="section-header">
-                    <h2>Stock de Productos</h2>
-                    <span class="filter-badge">FILTRADO POR: TODOS</span>
+                    <h2>Inventario de Cafetería</h2>
+                    <span class="filter-badge" id="activeFilterBadge">FILTRADO POR: TODOS</span>
                 </div>
 
-                <div class="products-list">
+                <div class="products-container" id="productsContainer">
                     
-                    <!-- Producto 1 -->
-                    <div class="product-item">
-                        <div class="product-img-placeholder">
-                            <span class="material-symbols-rounded">schedule</span>
-                        </div>
+                    <div class="product-item" data-category="cafe" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">nutrition</span></div>
                         <div class="product-info">
-                            <h3>Reloj Minimalista v2</h3>
-                            <p class="sku">SKU: REL-2024-W</p>
+                            <h3>Café en Grano Blend Espresso (1kg)</h3>
+                            <p class="sku">SKU: CAF-ESP-01</p>
                             <span class="status status-in-stock">● EN STOCK</span>
                         </div>
                         <div class="product-meta">
-                            <span class="price">$45.00</span>
-                            <span class="badge badge-brown">84 unidades</span>
+                            <span class="price">$24.50</span>
+                            <span class="badge badge-brown">45 unidades</span>
                         </div>
                     </div>
 
-                    <!-- Producto 2 -->
-                    <div class="product-item">
-                        <div class="product-img-placeholder">
-                            <span class="material-symbols-rounded">headphones</span>
-                        </div>
+                    <div class="product-item" data-category="cafe" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">nutrition</span></div>
                         <div class="product-info">
-                            <h3>Auriculares Studio Pro</h3>
-                            <p class="sku">SKU: AUD-PRO-BLK</p>
+                            <h3>Café de Especialidad Etiopía (250g)</h3>
+                            <p class="sku">SKU: CAF-ETI-250</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$18.00</span>
+                            <span class="badge badge-brown">15 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="cafe" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">nutrition</span></div>
+                        <div class="product-info">
+                            <h3>Café de Especialidad Colombia Geisha (250g)</h3>
+                            <p class="sku">SKU: CAF-COL-GEI</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$29.90</span>
+                            <span class="badge badge-brown">10 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="cafe" data-stock="low">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">nutrition</span></div>
+                        <div class="product-info">
+                            <h3>Café Orgánico Descafeinado (1kg)</h3>
+                            <p class="sku">SKU: CAF-DES-ORG</p>
                             <span class="status status-low-stock">● STOCK BAJO</span>
                         </div>
                         <div class="product-meta">
-                            <span class="price">$189.99</span>
+                            <span class="price">$26.00</span>
                             <span class="badge badge-red">3 unidades</span>
                         </div>
                     </div>
 
-                    <!-- Producto 3 -->
-                    <div class="product-item">
-                        <div class="product-img-placeholder">
-                            <span class="material-symbols-rounded">photo_camera</span>
-                        </div>
+                    <div class="product-item" data-category="cafe" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">nutrition</span></div>
                         <div class="product-info">
-                            <h3>Cámara Retro-Link</h3>
-                            <p class="sku">SKU: CAM-VNT-88</p>
+                            <h3>Café de Especialidad Kenia AA (250g)</h3>
+                            <p class="sku">SKU: CAF-KEN-AA</p>
                             <span class="status status-in-stock">● EN STOCK</span>
                         </div>
                         <div class="product-meta">
-                            <span class="price">$320.00</span>
+                            <span class="price">$21.50</span>
+                            <span class="badge badge-brown">18 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="cafe" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">nutrition</span></div>
+                        <div class="product-info">
+                            <h3>Café Cold Brew Blend Grano Moledura Gruesa (1kg)</h3>
+                            <p class="sku">SKU: CAF-CBD-GRU</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$23.00</span>
+                            <span class="badge badge-brown">22 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="cafe" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">nutrition</span></div>
+                        <div class="product-info">
+                            <h3>Café de Especialidad Sumatra Mandheling (250g)</h3>
+                            <p class="sku">SKU: CAF-SUM-MAN</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$19.80</span>
                             <span class="badge badge-brown">12 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="cafe" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">nutrition</span></div>
+                        <div class="product-info">
+                            <h3>Café House Blend Tueste Medio (1kg)</h3>
+                            <p class="sku">SKU: CAF-HOU-MED</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$22.00</span>
+                            <span class="badge badge-brown">30 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="leche" data-stock="low">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">water_drop</span></div>
+                        <div class="product-info">
+                            <h3>Leche de Almendras Barista (1L)</h3>
+                            <p class="sku">SKU: LCH-ALM-BAR</p>
+                            <span class="status status-low-stock">● STOCK BAJO</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$3.80</span>
+                            <span class="badge badge-red">5 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="leche" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">water_drop</span></div>
+                        <div class="product-info">
+                            <h3>Leche de Avena Orgánica (1L)</h3>
+                            <p class="sku">SKU: LCH-AVE-ORG</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$4.20</span>
+                            <span class="badge badge-brown">32 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="leche" data-stock="low">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">water_drop</span></div>
+                        <div class="product-info">
+                            <h3>Leche Entera Cremosa Barista (1L)</h3>
+                            <p class="sku">SKU: LCH-ENT-BAR</p>
+                            <span class="status status-low-stock">● STOCK BAJO</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$1.95</span>
+                            <span class="badge badge-red">8 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="jarabe" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">local_see</span></div>
+                        <div class="product-info">
+                            <h3>Jarabe de Vainilla Madagascan (750ml)</h3>
+                            <p class="sku">SKU: JAR-VAI-750</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$14.90</span>
+                            <span class="badge badge-brown">12 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="jarabe" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">local_see</span></div>
+                        <div class="product-info">
+                            <h3>Jarabe de Caramelo Salado (750ml)</h3>
+                            <p class="sku">SKU: JAR-CRM-750</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$14.90</span>
+                            <span class="badge badge-brown">20 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="jarabe" data-stock="low">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">local_see</span></div>
+                        <div class="product-info">
+                            <h3>Salsa de Chocolate Blanco Premium</h3>
+                            <p class="sku">SKU: JAR-CHO-BLN</p>
+                            <span class="status status-low-stock">● STOCK BAJO</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$16.50</span>
+                            <span class="badge badge-red">2 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="reposteria" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">bakery_dining</span></div>
+                        <div class="product-info">
+                            <h3>Croissant de Mantequilla</h3>
+                            <p class="sku">SKU: PAN-CRO-02</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$2.20</span>
+                            <span class="badge badge-brown">28 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="reposteria" data-stock="low">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">icecream</span></div>
+                        <div class="product-info">
+                            <h3>Matcha en Polvo Ceremonial (500g)</h3>
+                            <p class="sku">SKU: TEA-MAT-CER</p>
+                            <span class="status status-low-stock">● STOCK BAJO</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$35.00</span>
+                            <span class="badge badge-red">2 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="reposteria" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">heap_snapshot_large</span></div>
+                        <div class="product-info">
+                            <h3>Concentrado Polvo Chai Spice (1kg)</h3>
+                            <p class="sku">SKU: TEA-CHI-SPI</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$22.00</span>
+                            <span class="badge badge-brown">11 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="reposteria" data-stock="low">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">cake</span></div>
+                        <div class="product-info">
+                            <h3>Cheesecake de Frutos Rojos (Porción)</h3>
+                            <p class="sku">SKU: POS-CHS-FRU</p>
+                            <span class="status status-low-stock">● STOCK BAJO</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$4.50</span>
+                            <span class="badge badge-red">3 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="reposteria" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">cookie</span></div>
+                        <div class="product-info">
+                            <h3>Chispas de Chocolate Semi-Amargo (1kg)</h3>
+                            <p class="sku">SKU: TOP-CHI-CHO</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$11.20</span>
+                            <span class="badge badge-brown">14 unidades</span>
+                        </div>
+                    </div>
+
+                    <div class="product-item" data-category="reposteria" data-stock="normal">
+                        <div class="product-img-placeholder"><span class="material-symbols-rounded">local_drink</span></div>
+                        <div class="product-info">
+                            <h3>Vasos Compostables Biodegradables 12oz</h3>
+                            <p class="sku">SKU: SCR-VAS-12C</p>
+                            <span class="status status-in-stock">● EN STOCK</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="price">$18.00</span>
+                            <span class="badge badge-brown">150 unidades</span>
                         </div>
                     </div>
 
                 </div>
 
-                <button class="view-all-btn">Ver todos los productos (8)</button>
+                <div id="noResultsMessage" class="no-results" style="display: none;">
+                    <span class="material-symbols-rounded">search_off</span>
+                    <p>No se encontraron insumos que coincidan con la búsqueda.</p>
+                </div>
+
+                <button class="view-all-btn" id="collapseBtn" onclick="resetFilters()" style="display: none;">Limpiar filtros y ver todo</button>
             </section>
         </main>
 
-        <!-- BOTÓN FLOTANTE (FAB) -->
         <button class="fab-btn">
             <span class="material-symbols-rounded">add</span>
         </button>
 
-        <!-- NAVEGACIÓN INFERIOR (Cubre todo el ancho inferior) -->
         <nav class="bottom-nav">
             <div class="nav-item">
                 <span class="material-symbols-rounded">dashboard</span>
@@ -157,6 +378,8 @@
         </nav>
 
     </div>
+
+    <script src="../js/inventario.js"></script>
 
 </body>
 </html>
