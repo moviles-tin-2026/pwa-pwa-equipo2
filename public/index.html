@@ -5,6 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PWA-Cafetería</title>
+    
+    <!-- ================= PWA META TAGS ================= -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#007bff">
+    
+    <!-- Optimización para Apple / iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="The Coffee Spot">
+    <link rel="apple-touch-icon" href="./icono.png">
+    <!-- ================================================= -->
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="./css/inicio.css">
@@ -297,9 +309,8 @@
     </main>
 
     <!-- Bottom Navigation -->
-    <!-- Bottom Navigation -->
     <nav class="bottom-nav">
-        <a href="index.html" class="nav-item active">
+        <a href="./index.html" class="nav-item active">
             <i class="bi bi-grid-3x3-gap"></i>
             <span>Inicio</span>
         </a>
@@ -323,6 +334,17 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./js/inicio.js"></script>
+
+    <!-- Script de Registro del Service Worker para activar PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('¡PWA lista! Service Worker registrado con éxito.', reg))
+                    .catch(err => console.error('Error al registrar el Service Worker de la PWA:', err));
+            });
+        }
+    </script>
 </body>
 
 </html>
