@@ -1,0 +1,19 @@
+{
+    "name": "PyME-Sync Ventas",
+    "short_name": "PyME-Sync",
+    "description": "Aplicación PWA para gestión de ventas e inventario de micronegocios.",
+    "start_url": "./index.html",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#f3e6de",
+    "theme_color": "#4b1504",
+    "icons": [
+        {
+            "src": "img/icon512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
