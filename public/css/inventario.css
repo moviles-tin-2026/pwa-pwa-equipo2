@@ -32,17 +32,15 @@ body {
     overflow-x: hidden;
 }
 
-/* ==========================================================================
-   CANVAS DE FONDOS (Granos de Café Animados)
-   ========================================================================== */
+/* CANVAS DE FONDOS */
 #coffeeBackground {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: -1;          /* Detrás de la interfaz */
-    pointer-events: none; /* No interrumpe los clics ni el scroll */
+    z-index: -1;
+    pointer-events: none;
 }
 
 .app-container {
@@ -202,7 +200,7 @@ body {
 }
 
 /* ==========================================================================
-   TARJETAS DE MÉTRICAS (Cristal Esmerilado)
+   TARJETAS DE RESUMEN
    ========================================================================== */
 .summary-cards {
     display: grid;
@@ -269,7 +267,7 @@ body {
 }
 
 /* ==========================================================================
-   SECCIÓN DE PRODUCTOS (Contenedor Principal de la Lista)
+   SECCIÓN DE PRODUCTOS
    ========================================================================== */
 .products-section {
     background-color: rgba(255, 255, 255, 0.85); 
@@ -306,7 +304,6 @@ body {
     gap: 16px;
 }
 
-/* ELEMENTOS INDIVIDUALE DE LA FILA */
 .product-item {
     display: flex;
     align-items: center;
@@ -390,7 +387,6 @@ body {
     color: var(--accent-red-text); 
 }
 
-/* AJUSTES DE BÚSQUEDA SIN RESPUESTA */
 .no-results {
     text-align: center;
     padding: 40px 20px;
@@ -423,28 +419,190 @@ body {
 }
 
 /* ==========================================================================
-   BOTÓN ACCIÓN FLOTANTE (FAB)
+   NUEVO: BOTÓN FLOTANTE ANIMADO EXTENSIBLE (FAB)
    ========================================================================== */
 .fab-btn {
     position: fixed;
-    bottom: 90px;
+    bottom: 92px;
     right: 24px;
     background-color: var(--brand-dark);
     color: var(--bg-white);
-    width: 54px;
     height: 54px;
-    border-radius: 50%;
+    width: 54px;               /* Dimensión circular inicial */
+    border-radius: 30px;
     display: flex;
     justify-content: center;
     align-items: center;
     border: none;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    box-shadow: 0 6px 16px rgba(74, 35, 16, 0.25);
     z-index: 99;
     cursor: pointer;
+    overflow: hidden;
+    padding: 0 15px;
+    transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                box-shadow 0.3s ease;
+}
+
+/* El texto inicia totalmente oculto e inaccesible */
+.fab-text {
+    max-width: 0;
+    opacity: 0;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: max-width 0.35s ease, opacity 0.25s ease, margin-left 0.3s ease;
+}
+
+/* EFECTO HOVER: Expansión reactiva del botón */
+.fab-btn:hover {
+    width: 185px;              /* Ancho necesario para contener el texto */
+    box-shadow: 0 8px 22px rgba(74, 35, 16, 0.35);
+}
+
+.fab-btn:hover .fab-text {
+    max-width: 130px;
+    opacity: 1;
+    margin-left: 8px;          /* Separación limpia del icono de suma */
 }
 
 /* ==========================================================================
-   NAVEGACIÓN INFERIOR (Estilo móvil fija)
+   NUEVO: INTERFAZ MODAL (Formulario Emergente Translúcido)
+   ========================================================================== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(61, 36, 20, 0.4); /* Capa oscura tenue a tono */
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-content {
+    background-color: var(--bg-white);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    width: 90%;
+    max-width: 480px;
+    padding: 24px;
+    box-shadow: 0 15px 35px rgba(74, 35, 16, 0.18);
+    transform: translateY(20px);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+}
+
+.modal-overlay.show .modal-content {
+    transform: translateY(0);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.modal-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.close-modal-btn:hover {
+    background-color: var(--bg-app);
+    color: var(--brand-dark);
+}
+
+/* Campos de Formulario */
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+}
+
+.form-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.form-group input, .form-group select {
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    font-size: 14px;
+    color: var(--text-main);
+    background-color: #fdfbf9;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus, .form-group select:focus {
+    border-color: var(--brand-dark);
+}
+
+.submit-btn {
+    background-color: var(--brand-dark);
+    color: var(--bg-white);
+    border: none;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.submit-btn:hover {
+    background-color: #35180a;
+}
+
+.submit-btn:active {
+    transform: scale(0.98);
+}
+
+/* ==========================================================================
+   NAVEGACIÓN INFERIOR MÓVIL
    ========================================================================== */
 .bottom-nav {
     position: fixed;
@@ -495,7 +653,7 @@ body {
 }
 
 /* ==========================================================================
-   SOPORTE DE VISTA ESCRITORIO PC (Estructura en 2 Columnas)
+   SOPORTE DE VISTA ESCRITORIO PC
    ========================================================================== */
 @media (min-width: 992px) {
     .products-container {
