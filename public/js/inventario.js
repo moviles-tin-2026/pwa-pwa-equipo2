@@ -126,7 +126,6 @@ class CoffeeGrain {
     draw() {
         const progress = Math.min(Math.max(this.y / canvas.height, 0), 1);
         
-        // Tránsito armónico del Café Profundo rgb(31, 12, 4) al Beige Claro de Fondo rgb(229, 213, 203)
         const r = Math.floor(31 + (198 * progress));
         const g = Math.floor(12 + (201 * progress));
         const b = Math.floor(4 + (199 * progress));
@@ -164,6 +163,51 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
+// ==========================================
+//  NUEVO: INTERACCIONES DE LA VENTANA MODAL
+// ==========================================
+const modal = document.getElementById('addProductModal');
+const openModalBtn = document.getElementById('openModalBtn');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const newProductForm = document.getElementById('newProductForm');
+
+// Abrir modal al presionar el FAB extensible
+openModalBtn.addEventListener('click', () => {
+    modal.classList.add('show');
+});
+
+// Cerrar modal al dar clic a la equis 'X'
+closeModalBtn.addEventListener('click', () => {
+    modal.classList.remove('show');
+});
+
+// Cerrar modal alternativo al dar un clic al fondo desenfocado
+modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+        modal.classList.remove('show');
+    }
+});
+
+// Simulación de guardado y captura de datos del formulario
+newProductForm.addEventListener('submit', () => {
+    const name = document.getElementById('prodName').value;
+    const sku = document.getElementById('prodSku').value;
+    const category = document.getElementById('prodCategory').value;
+    const price = parseFloat(document.getElementById('prodPrice').value).toFixed(2);
+    const stock = parseInt(document.getElementById('prodStock').value);
+
+    console.log("Guardando nuevo insumo en PyME-Sync:", { name, sku, category, price, stock });
+    
+    // Aquí puedes meter la lógica de inserción al DOM si la requieres más adelante
+    alert(`Insumo "${name}" registrado con éxito.`);
+    
+    // Limpieza e inhabilitación de vista
+    newProductForm.reset();
+    modal.classList.remove('show');
+    filterProducts();
+});
+
+// Inicialización general
 window.onload = function() {
     filterProducts();
     animate();
