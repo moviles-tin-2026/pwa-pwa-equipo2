@@ -27,8 +27,14 @@ class _InventarioPageState extends State<InventarioPage> {
   bool _isEditing = false;          
   String? _editingProductId;        
 
-  // Estado del filtro adaptado a tus nuevas categorías
+  // Estados nuevos para el panel de Bajo Stock y los Filtros
+  bool _showLowStockPanel = false;
   String _selectedFilter = 'Todos';
+  String _bajoStockFilter = 'Todos';
+  
+  // Controlador para el autoscroll del panel de bajo stock
+  final ScrollController _bajoStockScrollController = ScrollController();
+  List<QueryDocumentSnapshot> _documentosBajoStock = [];
 
   @override
   void dispose() {
@@ -37,6 +43,7 @@ class _InventarioPageState extends State<InventarioPage> {
     _precioController.dispose();
     _categoriaController.dispose();
     _descripcionController.dispose();
+    _bajoStockScrollController.dispose();
     super.dispose();
   }
 
@@ -50,6 +57,7 @@ class _InventarioPageState extends State<InventarioPage> {
       _categoriaController.clear();
       _descripcionController.clear();
       _showFormPanel = true; 
+      _showLowStockPanel = false;
     });
   }
 
@@ -63,6 +71,7 @@ class _InventarioPageState extends State<InventarioPage> {
       _categoriaController.text = data['categoria']?.toString() ?? '';
       _descripcionController.text = data['descripcion']?.toString() ?? '';
       _showFormPanel = true; 
+      _showLowStockPanel = false;
     });
   }
 
@@ -144,6 +153,32 @@ class _InventarioPageState extends State<InventarioPage> {
     }
   }
 
+  // LÓGICA DE SCROLL PARA EL PANEL DE BAJO STOCK
+  void _hacerScrollHaciaCategoria(String categoria) {
+    setState(() => _bajoStockFilter = categoria);
+    
+    if (categoria == 'Todos') {
+      _bajoStockScrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+      return;
+    }
+
+    int index = _documentosBajoStock.indexWhere((doc) {
+      final cat = ((doc.data() as Map<String, dynamic>)['categoria'] ?? '').toString().toLowerCase();
+      if (categoria == 'Bebidas Calientes') return cat == 'bebidas calientes' || cat == 'bebida caliente';
+      if (categoria == 'Bebidas Frías') return cat == 'bebidas frías' || cat == 'bebida fría' || cat == 'bebidas frias' || cat == 'bebida fria';
+      return cat == categoria.toLowerCase();
+    });
+
+    if (index != -1) {
+      double posicionOffset = index * 72.0; 
+      _bajoStockScrollController.animateTo(
+        posicionOffset,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -164,12 +199,13 @@ class _InventarioPageState extends State<InventarioPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            // ¡AQUÍ ESTÁ TU LOGO RESTAURADO!
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.pets, color: Color(0xffCFCFCD), size: 28),
-                                SizedBox(width: 8),
-                                Text(
+                                Image.asset('assets/logo1.png', width: 35, height: 35),
+                                const SizedBox(width: 8),
+                                const Text(
                                   'Coffee Cat',
                                   style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                                 ),
@@ -239,7 +275,7 @@ class _InventarioPageState extends State<InventarioPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // TARJETAS SUPERIORES CONECTADAS EN TIEMPO REAL A FIREBASE (TOTAL GLOBAL)
+                  // TARJETAS SUPERIORES CONECTADAS EN TIEMPO REAL A FIREBASE
                   StreamBuilder<QuerySnapshot>(
                     stream: _productosRef.snapshots(),
                     builder: (context, snapshot) {
@@ -259,7 +295,6 @@ class _InventarioPageState extends State<InventarioPage> {
                           int cant = int.tryParse(d['cantidad']?.toString() ?? '0') ?? 0;
                           double precio = double.tryParse(d['precio']?.toString() ?? '0.0') ?? 0.0;
                           
-                          // Sumas acumulativas automáticas
                           valorTotal += (cant * precio);
                           if (cant <= 5) bajoStock++;
                           
@@ -273,7 +308,19 @@ class _InventarioPageState extends State<InventarioPage> {
                         children: [
                           _buildSummaryCard(Icons.inventory_2, '$totalProductos', 'Total Productos'),
                           const SizedBox(width: 16),
-                          _buildSummaryCard(Icons.warning_amber, '$bajoStock', 'Bajo Stock', isAlert: bajoStock > 0),
+                          // TARJETA INTERACTIVA DE BAJO STOCK
+                          _buildSummaryCard(
+                            Icons.warning_amber, 
+                            '$bajoStock', 
+                            'Bajo Stock', 
+                            isAlert: bajoStock > 0,
+                            onTap: () {
+                              setState(() {
+                                _showLowStockPanel = true;
+                                _showFormPanel = false;
+                              });
+                            }
+                          ),
                           const SizedBox(width: 16),
                           _buildSummaryCard(Icons.category, '${categorias.length}', 'Categorías'),
                           const SizedBox(width: 16),
@@ -282,9 +329,23 @@ class _InventarioPageState extends State<InventarioPage> {
                       );
                     }
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
-                  // Grilla de Productos Filtrada
+                  // FILTRO ESTILO PÍLDORA DEL INVENTARIO
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildPillFilter('Todos', _selectedFilter, (val) => setState(() => _selectedFilter = val)),
+                        _buildPillFilter('Bebidas Calientes', _selectedFilter, (val) => setState(() => _selectedFilter = val)),
+                        _buildPillFilter('Bebidas Frías', _selectedFilter, (val) => setState(() => _selectedFilter = val)),
+                        _buildPillFilter('Postres', _selectedFilter, (val) => setState(() => _selectedFilter = val)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // GRILLA DE PRODUCTOS
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
                       stream: _productosRef.snapshots(),
@@ -306,6 +367,8 @@ class _InventarioPageState extends State<InventarioPage> {
                             
                             if (_selectedFilter == 'Bebidas Calientes') {
                               return cat == 'bebidas calientes' || cat == 'bebida caliente';
+                            } else if (_selectedFilter == 'Bebidas Frías') {
+                              return cat == 'bebidas frías' || cat == 'bebida fría' || cat == 'bebidas frias' || cat == 'bebida fria';
                             }
                             return cat == _selectedFilter.toLowerCase();
                           }).toList();
@@ -352,7 +415,14 @@ class _InventarioPageState extends State<InventarioPage> {
                                 final int cantidad = int.tryParse(data['cantidad']?.toString() ?? '0') ?? 0;
                                 final double precio = double.tryParse(data['precio']?.toString() ?? '0.0') ?? 0.0;
                                 final String categoria = data['categoria']?.toString() ?? 'Bebidas Calientes';
-                                final String urlImagen = data['url_imagen']?.toString() ?? '';
+                                
+                                // INYECCIÓN ESTÁTICA DE TUS IMÁGENES
+                                String urlImagen = data['url_imagen']?.toString() ?? '';
+                                if (nombre == 'Rebanada de Pastel de Zanahoria') {
+                                  urlImagen = 'https://i.postimg.cc/VvGcnz49/Whats-App-Image-2026-07-15-at-5-44-43-PM.jpg';
+                                } else if (nombre == 'Gato Negro') {
+                                  urlImagen = 'https://i.postimg.cc/qqbdypQP/Whats-App-Image-2026-07-15-at-5-44-44-PM.jpg';
+                                }
 
                                 return Card(
                                   color: Colors.white,
@@ -370,7 +440,11 @@ class _InventarioPageState extends State<InventarioPage> {
                                               height: double.infinity,
                                               color: const Color(0xffE5E5E3),
                                               child: urlImagen.isNotEmpty
-                                                  ? Image.network(urlImagen, fit: BoxFit.cover)
+                                                  ? Image.network(
+                                                      urlImagen, 
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, size: 50, color: Color(0xff55453A)),
+                                                    )
                                                   : const Icon(Icons.local_cafe, size: 50, color: Color(0xff55453A)),
                                             ),
                                             Positioned(
@@ -454,10 +528,10 @@ class _InventarioPageState extends State<InventarioPage> {
             ),
           ),
 
-          // 3. PANEL LATERAL DERECHO (AGREGAR/EDITAR)
+          // 3. PANELES LATERALES DERECHOS (FORMULARIO O BAJO STOCK)
           AnimatedContainer(
             duration: const Duration(milliseconds: 250),
-            width: _showFormPanel ? 320 : 0,
+            width: (_showFormPanel || _showLowStockPanel) ? 320 : 0,
             child: _showFormPanel
                 ? Container(
                     color: const Color(0xffEAEAEA),
@@ -519,9 +593,155 @@ class _InventarioPageState extends State<InventarioPage> {
                       ),
                     ),
                   )
-                : const SizedBox.shrink(),
+                : _showLowStockPanel 
+                    ? Container(
+                        color: const Color(0xffEAEAEA),
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Text('Bajo Stock', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+                                    SizedBox(width: 8),
+                                    Icon(Icons.warning_amber, color: Colors.red),
+                                  ],
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close, color: Colors.red),
+                                  onPressed: () => setState(() => _showLowStockPanel = false),
+                                  tooltip: 'Cerrar panel',
+                                )
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            // LA SOLUCIÓN: Usamos "Wrap" en lugar de Row para que los botones bajen a la siguiente línea si no caben
+                            Wrap(
+                              spacing: 8.0, // espacio horizontal
+                              runSpacing: 8.0, // espacio vertical
+                              children: ['Todos', 'Bebidas Calientes', 'Bebidas Frías', 'Postres'].map((cat) {
+                                bool isSelected = _bajoStockFilter == cat;
+                                return InkWell(
+                                  onTap: () => _hacerScrollHaciaCategoria(cat),
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? const Color(0xff362419) : Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: isSelected ? const Color(0xff362419) : Colors.grey[300]!)
+                                    ),
+                                    child: Text(
+                                      cat,
+                                      style: TextStyle(
+                                        color: isSelected ? Colors.white : const Color(0xff362419),
+                                        fontSize: 13,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 24),
+                            Expanded(
+                              child: StreamBuilder<QuerySnapshot>(
+                                stream: _productosRef.snapshots(),
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                                  
+                                  // Solo cargamos los productos con cantidad <= 5 en esta lista general
+                                  var docs = snapshot.data!.docs.where((doc) {
+                                    final data = doc.data() as Map<String, dynamic>?;
+                                    if (data == null) return false;
+                                    int cant = int.tryParse(data['cantidad']?.toString() ?? '0') ?? 0;
+                                    return cant <= 5;
+                                  }).toList();
+
+                                  _documentosBajoStock = docs; // Guardamos para la lógica del Scroll
+
+                                  if (docs.isEmpty) {
+                                    return const Center(
+                                      child: Text('No hay productos con bajo stock en este momento.', textAlign: TextAlign.center),
+                                    );
+                                  }
+
+                                  return ListView.separated(
+                                    controller: _bajoStockScrollController, // Controlador de posición
+                                    itemCount: docs.length,
+                                    separatorBuilder: (context, index) => const Divider(color: Colors.black12),
+                                    itemBuilder: (context, index) {
+                                      final producto = docs[index];
+                                      final data = producto.data() as Map<String, dynamic>;
+                                      final String nombre = data['nombre']?.toString() ?? 'Sin nombre';
+                                      final String cant = data['cantidad']?.toString() ?? '0';
+
+                                      // INYECCIÓN ESTÁTICA PARA EL PANEL LATERAL TAMBIÉN
+                                      String urlImagen = data['url_imagen']?.toString() ?? '';
+                                      if (nombre == 'Rebanada de Pastel de Zanahoria') {
+                                        urlImagen = 'https://i.postimg.cc/VvGcnz49/Whats-App-Image-2026-07-15-at-5-44-43-PM.jpg';
+                                      } else if (nombre == 'Gato Negro') {
+                                        urlImagen = 'https://i.postimg.cc/qqbdypQP/Whats-App-Image-2026-07-15-at-5-44-44-PM.jpg';
+                                      }
+
+                                      return ListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        leading: Container(
+                                          width: 45,
+                                          height: 45,
+                                          decoration: BoxDecoration(color: const Color(0xffCFCFCD), borderRadius: BorderRadius.circular(8)),
+                                          clipBehavior: Clip.antiAlias,
+                                          child: urlImagen.isNotEmpty
+                                              ? Image.network(urlImagen, fit: BoxFit.cover)
+                                              : const Icon(Icons.warning_amber, color: Colors.red),
+                                        ),
+                                        title: Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xff362419))),
+                                        subtitle: Text('Stock: $cant uds.', style: TextStyle(color: Colors.red[800], fontWeight: FontWeight.bold, fontSize: 12)),
+                                        trailing: IconButton(
+                                          icon: const Icon(Icons.edit, size: 18, color: Color(0xff55453A)),
+                                          onPressed: () => _cargarProductoParaEditar(producto.id, data),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                }
+                              ),
+                            )
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
           )
         ],
+      ),
+    );
+  }
+
+  // WIDGET: Filtro estilo píldora
+  Widget _buildPillFilter(String text, String selectedValue, Function(String) onSelect) {
+    bool isSelected = text == selectedValue;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ChoiceChip(
+        label: Text(text),
+        selected: isSelected,
+        onSelected: (bool selected) {
+          if (selected) onSelect(text);
+        },
+        selectedColor: const Color(0xff362419),
+        backgroundColor: Colors.white,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : const Color(0xff362419),
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Colors.transparent),
+        ),
+        showCheckmark: false,
       ),
     );
   }
@@ -538,27 +758,55 @@ class _InventarioPageState extends State<InventarioPage> {
     );
   }
 
-  Widget _buildSummaryCard(IconData icon, String value, String title, {bool isAlert = false}) {
+  // TARJETA DE RESUMEN CON INTERACCIÓN CLARA
+  Widget _buildSummaryCard(IconData icon, String value, String title, {bool isAlert = false, VoidCallback? onTap}) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: isAlert ? Colors.red[100] : const Color(0xffE5E5E3), borderRadius: BorderRadius.circular(8)),
-              child: Icon(icon, color: isAlert ? Colors.red : const Color(0xff362419), size: 20),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white, 
+              borderRadius: BorderRadius.circular(12),
+              // Añade un pequeño sombreado y borde para destacar si tiene función "onTap"
+              border: isAlert && onTap != null ? Border.all(color: Colors.red.shade300, width: 1.5) : null,
+              boxShadow: onTap != null ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))] : null,
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
-                Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: isAlert ? Colors.red[100] : const Color(0xffE5E5E3), borderRadius: BorderRadius.circular(8)),
+                      child: Icon(icon, color: isAlert ? Colors.red : const Color(0xff362419), size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+                          Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    )
+                  ],
+                ),
+                // Ícono indicador de que la tarjeta se puede presionar
+                if (onTap != null)
+                  const Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Icon(Icons.touch_app, size: 16, color: Colors.grey),
+                  ),
               ],
-            )
-          ],
+            ),
+          ),
         ),
       ),
     );
