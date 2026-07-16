@@ -256,8 +256,8 @@ class _InventarioPageState extends State<InventarioPage> {
                             children: [
                               Text(
                                 (_selectedFilter == 'Todos' || _selectedFilter == 'undefined')
-                                    ? 'Inventario Completo 🐾' 
-                                    : '$_selectedFilter 🐾',
+                                    ? 'Inventario Completo 🤎' 
+                                    : '$_selectedFilter 🤎',
                                 style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xff362419)),
                               ),
                               const Text('Coffee Cat - Gestión de productos', style: TextStyle(color: Color(0xff55453A))),
@@ -417,12 +417,21 @@ class _InventarioPageState extends State<InventarioPage> {
                                 final String categoria = data['categoria']?.toString() ?? 'Bebidas Calientes';
                                 
                                 // INYECCIÓN ESTÁTICA DE TUS IMÁGENES
-                                String urlImagen = data['url_imagen']?.toString() ?? '';
-                                if (nombre == 'Rebanada de Pastel de Zanahoria') {
-                                  urlImagen = 'https://i.postimg.cc/VvGcnz49/Whats-App-Image-2026-07-15-at-5-44-43-PM.jpg';
-                                } else if (nombre == 'Gato Negro') {
-                                  urlImagen = 'https://i.postimg.cc/qqbdypQP/Whats-App-Image-2026-07-15-at-5-44-44-PM.jpg';
-                                }
+String urlImagen = data['url_imagen']?.toString() ?? '';
+
+// Definimos un mapa con las relaciones de nombre y URL
+final Map<String, String> imagenesPorDefecto = {
+  'Miau Latte': 'https://i.postimg.cc/VvGcnz49/Whats-App-Image-2026-07-15-at-5-44-43-PM.jpg',
+  'Capuchino Bigotes': 'https://i.postimg.cc/qqbdypQP/Whats-App-Image-2026-07-15-at-5-44-44-PM.jpg',
+  'Cold Brew Nocturno': 'https://i.postimg.cc/YqYtdDMs/coldbrew.jpg',
+  'Purr Croissant': 'https://i.postimg.cc/4dDrtZK2/croissant.jpg',
+  'Michi-Muffin': 'https://i.postimg.cc/Hxqf5HJB/muffin.jpg',
+};
+
+// Si el producto existe en nuestro mapa, asignamos su URL correspondiente
+if (imagenesPorDefecto.containsKey(nombre)) {
+  urlImagen = imagenesPorDefecto[nombre]!;
+}
 
                                 return Card(
                                   color: Colors.white,
@@ -680,12 +689,19 @@ class _InventarioPageState extends State<InventarioPage> {
                                       final String cant = data['cantidad']?.toString() ?? '0';
 
                                       // INYECCIÓN ESTÁTICA PARA EL PANEL LATERAL TAMBIÉN
-                                      String urlImagen = data['url_imagen']?.toString() ?? '';
-                                      if (nombre == 'Rebanada de Pastel de Zanahoria') {
-                                        urlImagen = 'https://i.postimg.cc/VvGcnz49/Whats-App-Image-2026-07-15-at-5-44-43-PM.jpg';
-                                      } else if (nombre == 'Gato Negro') {
-                                        urlImagen = 'https://i.postimg.cc/qqbdypQP/Whats-App-Image-2026-07-15-at-5-44-44-PM.jpg';
-                                      }
+String urlImagen = data['url_imagen']?.toString() ?? '';
+
+if (nombre == 'Miau Latte') {
+  urlImagen = 'https://i.postimg.cc/VvGcnz49/Whats-App-Image-2026-07-15-at-5-44-43-PM.jpg';
+} else if (nombre == 'Capuchino Bigotes') {
+  urlImagen = 'https://i.postimg.cc/qqbdypQP/Whats-App-Image-2026-07-15-at-5-44-44-PM.jpg';
+} else if (nombre == 'Cold Brew Nocturno') {
+  urlImagen = 'https://i.postimg.cc/YqYtdDMs/coldbrew.jpg';
+} else if (nombre == 'Purr Croissant') {
+  urlImagen = 'https://i.postimg.cc/4dDrtZK2/croissant.jpg';
+} else if (nombre == 'Michi-Muffin') {
+  urlImagen = 'https://i.postimg.cc/Hxqf5HJB/muffin.jpg';
+}
 
                                       return ListTile(
                                         contentPadding: EdgeInsets.zero,
