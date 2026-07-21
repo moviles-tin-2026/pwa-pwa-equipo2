@@ -7,3 +7,5 @@ Aplicación móvil y web desarrollada en **Flutter** para la gestión e inventar
 Actualmente, la interfaz base del módulo de inicio de sesión e inventario se encuentra construida, pero existen algunos **detalles técnicos y de diseño visual** que se están corrigiendo en las vistas principales.
 
 ## ⚠️ Registro de Errores y Ajustes Pendientes
+### 🌐 1. Despliegue y Entorno (Web / Hosting)
+- [ ] **Sin publicación en la web:** El proyecto actualmente **solo corre en entorno local**. No se ha montado ni desplegado la página en un servidor o hosting web (como Firebase Hosting, Vercel o GitHub Pages) para su acceso remoto.
