@@ -1,17 +1,9 @@
-# login_app
+# 🐱☕ Coffee Cat - Sistema de Inventario
 
-A new Flutter project.
+Aplicación móvil y web desarrollada en **Flutter** para la gestión e inventario de la cafetería **Coffee Cat**.
 
-## Getting Started
+## 📌 Estado Actual del Proyecto
 
-This project is a starting point for a Flutter application.
+Actualmente, la interfaz base del módulo de inicio de sesión e inventario se encuentra construida, pero existen algunos **detalles técnicos y de diseño visual** que se están corrigiendo en las vistas principales.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## ⚠️ Registro de Errores y Ajustes Pendientes
