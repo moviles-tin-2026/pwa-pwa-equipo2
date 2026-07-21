@@ -9,3 +9,8 @@ Actualmente, la interfaz base del módulo de inicio de sesión e inventario se e
 ## ⚠️ Registro de Errores y Ajustes Pendientes
 ### 🌐 1. Despliegue y Entorno (Web / Hosting)
 - [ ] **Sin publicación en la web:** El proyecto actualmente **solo corre en entorno local**. No se ha montado ni desplegado la página en un servidor o hosting web (como Firebase Hosting, Vercel o GitHub Pages) para su acceso remoto.
+
+
+## 📱 2. Interfaz y Diseño Responsivo
+ ### Desbordamiento horizontal (RenderFlex)
+ - []  Algunos elementos colocados dentro de un Row ocupan más espacio que el ancho disponible de la pantalla. Flutter indica desbordamientos de 334 píxeles y 44 píxeles hacia la derecha, lo cual puede provocar que textos, botones u otros componentes queden fuera de la vista. Se debe ajustar el diseño utilizando elementos como Expanded, Flexible, Wrap o un desplazamiento horizontal para adaptarlo a diferentes tamaños de pantalla.
