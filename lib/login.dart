@@ -1,27 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'inventario.dart';
+import 'dashboard.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Login Coffee Cat',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff362419)),
-        useMaterial3: true,
-      ),
-      home: const LoginPage(),
-    );
-  }
-}
+// NOTA: Se eliminaron main() y MyApp porque ya están en main.dart
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -74,7 +55,7 @@ class _LoginPageState extends State<LoginPage> {
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const InventarioPage()),
+            MaterialPageRoute(builder: (context) => const DashboardPage()),
           );
         }
       }
@@ -92,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(mensaje, textAlign: TextAlign.center),
-            backgroundColor: Colors.red[800],
+            backgroundColor: Colors.red[900],
           ),
         );
       }
@@ -105,22 +86,17 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Estilos del efecto traslúcido y paleta de colores
-    final Color inputFillColor = Colors.white.withOpacity(0.4); 
+    final Color inputFillColor = Colors.white.withValues(alpha: 0.4);
     const Color brandColor = Color(0xff55453A);
 
     return Scaffold(
       body: Stack(
         children: [
-          
           // 1. CAPA TRASERA: Imagen de fondo a pantalla completa
           Positioned.fill(
-            child: Image.asset(
-              'assets/kitback.jpg', // Tu ilustración de fondo del gatito y cafetería
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/kitback.jpg', fit: BoxFit.cover),
           ),
-          
+
           // 2. CAPA DELANTERA: Contenido del Login
           SafeArea(
             child: Center(
@@ -129,19 +105,20 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    
-                    // Logo de la app con callback de error integrado
                     Image.asset(
                       'assets/logo1.png',
                       width: 130,
                       height: 130,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.pets, size: 100, color: Color(0xff362419));
+                        return const Icon(
+                          Icons.pets,
+                          size: 100,
+                          color: Color(0xff362419),
+                        );
                       },
                     ),
                     const SizedBox(height: 16.0),
-                    
                     const Text(
                       'Bienvenido a Coffee Cat',
                       style: TextStyle(
@@ -159,13 +136,11 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 32.0),
-                    
                     Form(
                       key: _formKey,
                       child: Column(
                         children: [
-                          
-                          // Campo 1: Correo electrónico (Contenedor Traslúcido)
+                          // Campo 1: Correo electrónico
                           Container(
                             decoration: BoxDecoration(
                               color: inputFillColor,
@@ -185,16 +160,28 @@ class _LoginPageState extends State<LoginPage> {
                               },
                               decoration: InputDecoration(
                                 labelText: 'Correo electrónico',
-                                labelStyle: const TextStyle(color: brandColor, fontWeight: FontWeight.w500),
-                                prefixIcon: const Icon(Icons.email, color: brandColor),
+                                labelStyle: const TextStyle(
+                                  color: brandColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.email,
+                                  color: brandColor,
+                                ),
                                 filled: false,
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: const BorderSide(color: brandColor, width: 1.2),
+                                  borderSide: const BorderSide(
+                                    color: brandColor,
+                                    width: 1.2,
+                                  ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: const BorderSide(color: brandColor, width: 2.0),
+                                  borderSide: const BorderSide(
+                                    color: brandColor,
+                                    width: 2.0,
+                                  ),
                                 ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12.0),
@@ -207,8 +194,8 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 16.0),
-                          
-                          // Campo 2: Contraseña (Contenedor Traslúcido)
+
+                          // Campo 2: Contraseña
                           Container(
                             decoration: BoxDecoration(
                               color: inputFillColor,
@@ -217,7 +204,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
-                              maxLength: 25, // Soporta hasta 25 caracteres para Firebase
+                              maxLength: 25,
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
                                   return 'Por favor ingresa tu contraseña';
@@ -232,11 +219,19 @@ class _LoginPageState extends State<LoginPage> {
                               },
                               decoration: InputDecoration(
                                 labelText: 'Contraseña',
-                                labelStyle: const TextStyle(color: brandColor, fontWeight: FontWeight.w500),
-                                prefixIcon: const Icon(Icons.lock_outline, color: brandColor),
+                                labelStyle: const TextStyle(
+                                  color: brandColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.lock_outline,
+                                  color: brandColor,
+                                ),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                    _obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
                                     color: brandColor,
                                   ),
                                   onPressed: () {
@@ -248,11 +243,17 @@ class _LoginPageState extends State<LoginPage> {
                                 filled: false,
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: const BorderSide(color: brandColor, width: 1.2),
+                                  borderSide: const BorderSide(
+                                    color: brandColor,
+                                    width: 1.2,
+                                  ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: const BorderSide(color: brandColor, width: 2.0),
+                                  borderSide: const BorderSide(
+                                    color: brandColor,
+                                    width: 2.0,
+                                  ),
                                 ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12.0),
@@ -266,8 +267,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 16.0),
-                          
-                          // Botón Olvidé mi contraseña
+
                           GestureDetector(
                             onTap: () {
                               // Acción para recuperar contraseña
@@ -283,8 +283,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const SizedBox(height: 28.0),
-                          
-                          // Botón de ingresar (Maneja el estado de carga)
+
                           SizedBox(
                             width: double.infinity,
                             height: 50.0,
@@ -299,7 +298,9 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               onPressed: _isLoading ? null : _login,
                               child: _isLoading
-                                  ? const CircularProgressIndicator(color: Color(0xffCFCFCD))
+                                  ? const CircularProgressIndicator(
+                                      color: Color(0xffCFCFCD),
+                                    )
                                   : const Text(
                                       'Ingresar',
                                       style: TextStyle(
