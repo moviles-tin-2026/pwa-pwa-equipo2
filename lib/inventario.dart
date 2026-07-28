@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'services/auth_service.dart';
 
 class InventarioPage extends StatefulWidget {
   const InventarioPage({super.key});
@@ -9,8 +10,7 @@ class InventarioPage extends StatefulWidget {
 }
 
 class _InventarioPageState extends State<InventarioPage> {
-  final CollectionReference _productosRef = 
-      FirebaseFirestore.instance.collection('productos');
+  final CollectionReference _productosRef = FirebaseFirestore.instance.collection('productos');
 
   final _nombreController = TextEditingController();
   final _cantidadController = TextEditingController();
@@ -18,15 +18,16 @@ class _InventarioPageState extends State<InventarioPage> {
   final _categoriaController = TextEditingController();
   final _descripcionController = TextEditingController();
 
-  bool _showFormPanel = false;      
-  bool _isEditing = false;          
-  String? _editingProductId;        
+  bool _showFormPanel = false;
+  bool _isEditing = false;
+  String? _editingProductId;
   bool _showLowStockPanel = false;
   String _selectedFilter = 'Todos';
   String _bajoStockFilter = 'Todos';
   
   final ScrollController _bajoStockScrollController = ScrollController();
   List<QueryDocumentSnapshot> _documentosBajoStock = [];
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -48,7 +49,7 @@ class _InventarioPageState extends State<InventarioPage> {
       _precioController.clear();
       _categoriaController.clear();
       _descripcionController.clear();
-      _showFormPanel = true; 
+      _showFormPanel = true;
       _showLowStockPanel = false;
     });
   }
@@ -62,7 +63,7 @@ class _InventarioPageState extends State<InventarioPage> {
       _precioController.text = (data['precio'] ?? 0.0).toString();
       _categoriaController.text = data['categoria']?.toString() ?? '';
       _descripcionController.text = data['descripcion']?.toString() ?? '';
-      _showFormPanel = true; 
+      _showFormPanel = true;
       _showLowStockPanel = false;
     });
   }
@@ -81,7 +82,7 @@ class _InventarioPageState extends State<InventarioPage> {
       'precio': double.tryParse(_precioController.text) ?? 0.0,
       'categoria': _categoriaController.text.trim(),
       'descripcion': _descripcionController.text,
-      'url_imagen': '', 
+      'url_imagen': '',
       'fecha_modificacion': FieldValue.serverTimestamp(),
     };
 
@@ -95,7 +96,7 @@ class _InventarioPageState extends State<InventarioPage> {
 
       _prepararNuevoProducto();
       setState(() {
-        _showFormPanel = false; 
+        _showFormPanel = false;
       });
 
       if (mounted) {
@@ -151,7 +152,7 @@ class _InventarioPageState extends State<InventarioPage> {
     });
 
     if (index != -1) {
-      double posicionOffset = index * 72.0; 
+      double posicionOffset = index * 72.0;
       _bajoStockScrollController.animateTo(
         posicionOffset,
         duration: const Duration(milliseconds: 400),
@@ -180,27 +181,27 @@ class _InventarioPageState extends State<InventarioPage> {
                         children: [
                           Text(
                             (_selectedFilter == 'Todos')
-                                ? 'Inventario Completo ' 
-                                : '$_selectedFilter ',
+                                ? 'Inventario Completo'
+                                : 'selectedFilter',
                             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xff362419)),
                           ),
                           const Text('Coffee Cat - Gestión de productos', style: TextStyle(color: Color(0xff55453A), fontSize: 12)),
                         ],
                       ),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xff362419), 
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      if (_authService.esSupervisor)
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xff362419),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          onPressed: _prepararNuevoProducto,
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Agregar', style: TextStyle(fontSize: 13)),
                         ),
-                        onPressed: _prepararNuevoProducto, 
-                        icon: const Icon(Icons.add, size: 16),
-                        label: const Text('Agregar', style: TextStyle(fontSize: 13)),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
-
                   LayoutBuilder(
                     builder: (context, constraints) {
                       return StreamBuilder<QuerySnapshot>(
@@ -236,28 +237,21 @@ class _InventarioPageState extends State<InventarioPage> {
                             runSpacing: 12,
                             children: [
                               _buildSummaryCard(Icons.inventory_2, '$totalProductos', 'Total Productos', Colors.blue),
-                              _buildSummaryCard(
-                                Icons.warning_amber, 
-                                '$bajoStock', 
-                                'Bajo Stock', 
-                                Colors.red,
-                                onTap: () {
-                                  setState(() {
-                                    _showLowStockPanel = true;
-                                    _showFormPanel = false;
-                                  });
-                                }
-                              ),
+                              _buildSummaryCard(Icons.warning_amber, '$bajoStock', 'Bajo Stock', Colors.red, onTap: () {
+                                setState(() {
+                                  _showLowStockPanel = true;
+                                  _showFormPanel = false;
+                                });
+                              }),
                               _buildSummaryCard(Icons.category, '${categorias.length}', 'Categorías', Colors.purple),
                               _buildSummaryCard(Icons.attach_money, '\$${valorTotal.toStringAsFixed(2)}', 'Valor Total', Colors.green),
                             ],
                           );
-                        }
+                        },
                       );
                     },
                   ),
                   const SizedBox(height: 16),
-
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -270,7 +264,6 @@ class _InventarioPageState extends State<InventarioPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
                       stream: _productosRef.orderBy('nombre').snapshots(),
@@ -326,8 +319,8 @@ class _InventarioPageState extends State<InventarioPage> {
                               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: crossAxisCount,
                                 crossAxisSpacing: 10,
-                                mainAxisSpacing: 10, 
-                                childAspectRatio: childAspectRatio, 
+                                mainAxisSpacing: 10,
+                                childAspectRatio: childAspectRatio,
                               ),
                               itemCount: docs.length,
                               itemBuilder: (context, index) {
@@ -370,7 +363,7 @@ class _InventarioPageState extends State<InventarioPage> {
                                             Container(color: const Color(0xffE5E5E3)),
                                             if (urlImagen.isNotEmpty)
                                               Image.network(
-                                                urlImagen, 
+                                                urlImagen,
                                                 fit: BoxFit.cover,
                                                 errorBuilder: (context, error, stackTrace) => const Icon(Icons.local_cafe, size: 30, color: Color(0xff55453A)),
                                               )
@@ -405,9 +398,9 @@ class _InventarioPageState extends State<InventarioPage> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              nombre, 
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xff362419)), 
-                                              maxLines: 1, 
+                                              nombre,
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xff362419)),
+                                              maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             const SizedBox(height: 3),
@@ -430,22 +423,23 @@ class _InventarioPageState extends State<InventarioPage> {
                                                       padding: EdgeInsets.zero,
                                                       minimumSize: const Size(0, 24),
                                                     ),
-                                                    onPressed: () => _cargarProductoParaEditar(producto.id, data), 
+                                                    onPressed: () => _cargarProductoParaEditar(producto.id, data),
                                                     icon: const Icon(Icons.edit, size: 12),
                                                     label: const Text('Editar', style: TextStyle(fontSize: 9)),
                                                   ),
                                                 ),
                                                 const SizedBox(width: 4),
-                                                IconButton(
-                                                  style: IconButton.styleFrom(
-                                                    backgroundColor: const Color(0xffE5E5E3),
-                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                                    padding: EdgeInsets.zero,
-                                                    minimumSize: const Size(24, 24),
+                                                if (_authService.esAdmin)
+                                                  IconButton(
+                                                    style: IconButton.styleFrom(
+                                                      backgroundColor: const Color(0xffE5E5E3),
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                                      padding: EdgeInsets.zero,
+                                                      minimumSize: const Size(24, 24),
+                                                    ),
+                                                    icon: const Icon(Icons.delete, color: Colors.red, size: 14),
+                                                    onPressed: () => _eliminarProducto(producto.id),
                                                   ),
-                                                  icon: const Icon(Icons.delete, color: Colors.red, size: 14),
-                                                  onPressed: () => _eliminarProducto(producto.id),
-                                                ),
                                               ],
                                             )
                                           ],
@@ -465,7 +459,6 @@ class _InventarioPageState extends State<InventarioPage> {
               ),
             ),
           ),
-
           AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             width: (_showFormPanel || _showLowStockPanel) ? 300 : 0,
@@ -511,10 +504,10 @@ class _InventarioPageState extends State<InventarioPage> {
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               ),
-                              onPressed: _procesarGuardado, 
+                              onPressed: _procesarGuardado,
                               icon: Icon(_isEditing ? Icons.update : Icons.save, size: 16),
                               label: Text(
-                                _isEditing ? 'Actualizar' : 'Guardar', 
+                                _isEditing ? 'Actualizar' : 'Guardar',
                                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -523,7 +516,7 @@ class _InventarioPageState extends State<InventarioPage> {
                       ),
                     ),
                   )
-                : _showLowStockPanel 
+                : _showLowStockPanel
                     ? Container(
                         color: const Color(0xffEAEAEA),
                         padding: const EdgeInsets.all(16),
@@ -626,7 +619,7 @@ class _InventarioPageState extends State<InventarioPage> {
                                       );
                                     },
                                   );
-                                }
+                                },
                               ),
                             )
                           ],
