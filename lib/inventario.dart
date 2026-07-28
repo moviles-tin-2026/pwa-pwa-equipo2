@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'services/auth_service.dart';
 
 // ============================================================================
 // COMPONENTE DE ANIMACIÓN DE BACKGROUND (GRANOS DE CAFÉ APARECIENDO Y DESAPARECIENDO)
@@ -157,8 +158,7 @@ class InventarioPage extends StatefulWidget {
 }
 
 class _InventarioPageState extends State<InventarioPage> {
-  final CollectionReference _productosRef = 
-      FirebaseFirestore.instance.collection('productos');
+  final CollectionReference _productosRef = FirebaseFirestore.instance.collection('productos');
 
   final _nombreController = TextEditingController();
   final _cantidadController = TextEditingController();
@@ -166,15 +166,16 @@ class _InventarioPageState extends State<InventarioPage> {
   final _categoriaController = TextEditingController();
   final _descripcionController = TextEditingController();
 
-  bool _showFormPanel = false;      
-  bool _isEditing = false;          
-  String? _editingProductId;        
+  bool _showFormPanel = false;
+  bool _isEditing = false;
+  String? _editingProductId;
   bool _showLowStockPanel = false;
   String _selectedFilter = 'Todos';
   String _bajoStockFilter = 'Todos';
   
   final ScrollController _bajoStockScrollController = ScrollController();
   List<QueryDocumentSnapshot> _documentosBajoStock = [];
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -196,7 +197,7 @@ class _InventarioPageState extends State<InventarioPage> {
       _precioController.clear();
       _categoriaController.clear();
       _descripcionController.clear();
-      _showFormPanel = true; 
+      _showFormPanel = true;
       _showLowStockPanel = false;
     });
   }
@@ -210,7 +211,7 @@ class _InventarioPageState extends State<InventarioPage> {
       _precioController.text = (data['precio'] ?? 0.0).toString();
       _categoriaController.text = data['categoria']?.toString() ?? '';
       _descripcionController.text = data['descripcion']?.toString() ?? '';
-      _showFormPanel = true; 
+      _showFormPanel = true;
       _showLowStockPanel = false;
     });
   }
@@ -229,7 +230,7 @@ class _InventarioPageState extends State<InventarioPage> {
       'precio': double.tryParse(_precioController.text) ?? 0.0,
       'categoria': _categoriaController.text.trim(),
       'descripcion': _descripcionController.text,
-      'url_imagen': '', 
+      'url_imagen': '',
       'fecha_modificacion': FieldValue.serverTimestamp(),
     };
 
@@ -243,7 +244,7 @@ class _InventarioPageState extends State<InventarioPage> {
 
       _prepararNuevoProducto();
       setState(() {
-        _showFormPanel = false; 
+        _showFormPanel = false;
       });
 
       if (mounted) {
@@ -299,7 +300,7 @@ class _InventarioPageState extends State<InventarioPage> {
     });
 
     if (index != -1) {
-      double posicionOffset = index * 72.0; 
+      double posicionOffset = index * 72.0;
       _bajoStockScrollController.animateTo(
         posicionOffset,
         duration: const Duration(milliseconds: 400),
