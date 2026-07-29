@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.brown, // Tema consistente con tu marca
       ),
-      home: const WelcomePage(), // ← CAMBIO 2: La app ahora inicia aquí
+      home: const WelcomeScreen(), // ← CAMBIO 2: La app ahora inicia aquí
     );
   }
 }

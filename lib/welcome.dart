@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'login.dart';
 
-class WelcomePage extends StatefulWidget {
-  const WelcomePage({super.key});
+class WelcomeScreen extends StatefulWidget {
+  const WelcomeScreen({super.key});
 
   @override
-  State<WelcomePage> createState() => _WelcomePageState();
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
-class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStateMixin {
+class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProviderStateMixin {
   String? _selectedRole;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -231,8 +231,8 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
                               ],
                             ),
                             child: DropdownButtonFormField<String>(
-                              // CORRECCIÓN: initialValue en lugar de value
                               initialValue: _selectedRole,
+                              isExpanded: true,
                               decoration: InputDecoration(
                                 hintText: 'Selecciona tu rol',
                                 hintStyle: const TextStyle(color: Colors.grey),
@@ -250,6 +250,22 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
+                              
+                              // Vista simplificada al seleccionar (Evita el error de desbordamiento)
+                              selectedItemBuilder: (BuildContext context) {
+                                return _roles.map<Widget>((rol) {
+                                  return Text(
+                                    rol['label'] as String,
+                                    style: const TextStyle(
+                                      color: Color(0xff362419),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  );
+                                }).toList();
+                              },
+
+                              // Opciones completas con iconos y descripción al desplegar
                               items: _roles.map((rol) {
                                 return DropdownMenuItem<String>(
                                   value: rol['value'] as String,
@@ -257,19 +273,25 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
                                     children: [
                                       Icon(rol['icon'] as IconData, color: rol['color'] as Color, size: 20),
                                       const SizedBox(width: 12),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            rol['label'] as String,
-                                            style: const TextStyle(fontWeight: FontWeight.bold),
-                                          ),
-                                          Text(
-                                            rol['description'] as String,
-                                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                                          ),
-                                        ],
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              rol['label'] as String,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xff362419),
+                                              ),
+                                            ),
+                                            Text(
+                                              rol['description'] as String,
+                                              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),

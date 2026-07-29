@@ -11,8 +11,18 @@ class EstadisticasPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('📈 Estadísticas', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xff362419))),
-          const Text('Coffee Cat - Reportes y análisis', style: TextStyle(color: Color(0xff55453A), fontSize: 12)),
+          const Text(
+            '📈 Estadísticas',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xff362419),
+            ),
+          ),
+          const Text(
+            'Coffee Cat - Reportes y análisis',
+            style: TextStyle(color: Color(0xff55453A), fontSize: 12),
+          ),
           const SizedBox(height: 20),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -34,14 +44,32 @@ class EstadisticasPage extends StatelessWidget {
                   productosVendidos += productos.length;
                 }
 
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _buildStatCard(Icons.shopping_cart, '$totalVentas', 'Total Ventas', Colors.blue),
-                    _buildStatCard(Icons.attach_money, '\$${totalIngresos.toStringAsFixed(2)}', 'Ingresos Totales', Colors.green),
-                    _buildStatCard(Icons.inventory, '$productosVendidos', 'Productos Vendidos', Colors.orange),
-                  ],
+                // ✅ Se añade SingleChildScrollView para permitir scroll si hay muchas tarjetas
+                return SingleChildScrollView(
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _buildStatCard(
+                        Icons.shopping_cart,
+                        '$totalVentas',
+                        'Total Ventas',
+                        Colors.blue,
+                      ),
+                      _buildStatCard(
+                        Icons.attach_money,
+                        '\$${totalIngresos.toStringAsFixed(2)}',
+                        'Ingresos Totales',
+                        Colors.green,
+                      ),
+                      _buildStatCard(
+                        Icons.inventory,
+                        '$productosVendidos',
+                        'Productos Vendidos',
+                        Colors.orange,
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -64,6 +92,7 @@ class EstadisticasPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
+                  // ✅ CORREGIDO: Se reemplazó .withOpacity() por .withValues(alpha:)
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -74,8 +103,18 @@ class EstadisticasPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xff362419))),
-                    Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xff362419),
+                      ),
+                    ),
+                    Text(
+                      title,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                   ],
                 ),
               ),

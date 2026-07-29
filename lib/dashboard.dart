@@ -56,30 +56,34 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: isMobile ? Sidebar(
-        currentPage: _currentPage,
-        onDashboardTap: () => _navigateTo('dashboard'),
-        onInventarioTap: () => _navigateTo('inventario'),
-        onVentasTap: () => _navigateTo('ventas'),
-        onEstadisticasTap: () => _navigateTo('estadisticas'),
-        onEmpleadosTap: () => _navigateTo('empleados'),
-        onConfiguracionTap: () => _navigateTo('configuracion'),
-        onLogoutTap: _logout,
-        isMobile: true,
-      ) : null,
-      appBar: isMobile ? AppBar(
-        backgroundColor: const Color(0xff362419),
-        foregroundColor: Colors.white,
-        title: const Text('Coffee Cat'),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-        ),
-      ) : null,
+      drawer: isMobile
+          ? SimpleSidebar(
+              currentPage: _currentPage,
+              onDashboardTap: () => _navigateTo('dashboard'),
+              onInventarioTap: () => _navigateTo('inventario'),
+              onVentasTap: () => _navigateTo('ventas'),
+              onEstadisticasTap: () => _navigateTo('estadisticas'),
+              onEmpleadosTap: () => _navigateTo('empleados'),
+              onConfiguracionTap: () => _navigateTo('configuracion'),
+              onLogoutTap: _logout,
+              isMobile: true,
+            )
+          : null,
+      appBar: isMobile
+          ? AppBar(
+              backgroundColor: const Color(0xff362419),
+              foregroundColor: Colors.white,
+              title: const Text('Coffee Cat'),
+              leading: IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              ),
+            )
+          : null,
       body: Row(
         children: [
           if (!isMobile)
-            Sidebar(
+            SimpleSidebar(
               currentPage: _currentPage,
               onDashboardTap: () => _navigateTo('dashboard'),
               onInventarioTap: () => _navigateTo('inventario'),
@@ -101,7 +105,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildPageContent() {
     switch (_currentPage) {
       case 'inventario':
-        return const InventarioPage();
+        // ✅ CORREGIDO: Se cambió InventarioPage por InventarioScreen
+        return const InventarioScreen();
       case 'ventas':
         return const VentasPage();
       case 'empleados':
@@ -122,20 +127,37 @@ class _DashboardPageState extends State<DashboardPage> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final bool isSmall = constraints.maxWidth < 600;
-          
-          return Padding(
+
+          return SingleChildScrollView(
             padding: EdgeInsets.all(isSmall ? 16.0 : 24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Dashboard', style: TextStyle(fontSize: isSmall ? 22 : 28, fontWeight: FontWeight.bold, color: const Color(0xff362419))),
-                const Text('Coffee Cat - Resumen General', style: TextStyle(color: Color(0xff55453A), fontSize: 14)),
+                Text(
+                  'Dashboard',
+                  style: TextStyle(
+                    fontSize: isSmall ? 22 : 28,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xff362419),
+                  ),
+                ),
+                const Text(
+                  'Coffee Cat - Resumen General',
+                  style: TextStyle(color: Color(0xff55453A), fontSize: 14),
+                ),
                 SizedBox(height: isSmall ? 16 : 24),
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance.collection('productos').snapshots(),
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                    
+                    if (!snapshot.hasData) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+
                     int totalProductos = snapshot.data!.docs.length;
                     int bajoStock = 0;
                     double valorInventario = 0;
@@ -144,45 +166,82 @@ class _DashboardPageState extends State<DashboardPage> {
                       final data = doc.data() as Map<String, dynamic>;
                       int cant = int.tryParse(data['cantidad']?.toString() ?? '0') ?? 0;
                       double precio = double.tryParse(data['precio']?.toString() ?? '0.0') ?? 0.0;
-                      
+
                       if (cant <= 5) bajoStock++;
                       valorInventario += (cant * precio);
                     }
 
                     return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Wrap(
                           spacing: 16,
                           runSpacing: 16,
                           children: [
-                            _buildCard(Icons.inventory_2, '$totalProductos', 'Total Productos', Colors.blue, width: isSmall ? double.infinity : 220),
-                            _buildCard(Icons.warning_amber, '$bajoStock', 'Bajo Stock', Colors.red, width: isSmall ? double.infinity : 220),
-                            _buildCard(Icons.attach_money, '\$${valorInventario.toStringAsFixed(2)}', 'Valor Inventario', Colors.green, width: isSmall ? double.infinity : 220),
+                            _buildCard(
+                              Icons.inventory_2,
+                              '$totalProductos',
+                              'Total Productos',
+                              Colors.blue,
+                              width: isSmall ? double.infinity : 220,
+                            ),
+                            _buildCard(
+                              Icons.warning_amber,
+                              '$bajoStock',
+                              'Bajo Stock',
+                              Colors.red,
+                              width: isSmall ? double.infinity : 220,
+                            ),
+                            _buildCard(
+                              Icons.attach_money,
+                              '\$${valorInventario.toStringAsFixed(2)}',
+                              'Valor Inventario',
+                              Colors.green,
+                              width: isSmall ? double.infinity : 220,
+                            ),
                           ],
                         ),
-                        SizedBox(height: isSmall ? 24 : 40),
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.local_cafe, size: isSmall ? 60 : 80, color: const Color(0xff362419)),
-                                  SizedBox(height: isSmall ? 12 : 16),
-                                  Text(
-                                    '¡Hola, ${_authService.usuarioActual?.nombre ?? 'Usuario'}!',
-                                    style: TextStyle(fontSize: isSmall ? 18 : 24, fontWeight: FontWeight.bold, color: const Color(0xff362419)),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Rol: ${_authService.rolActual ?? "Sin rol"}',
-                                    style: TextStyle(fontSize: isSmall ? 12 : 14, color: Colors.grey),
-                                  ),
-                                ],
+                        SizedBox(height: isSmall ? 24 : 32),
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            vertical: isSmall ? 32 : 48,
+                            horizontal: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black12, blurRadius: 4),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.local_cafe,
+                                size: isSmall ? 60 : 80,
+                                color: const Color(0xff362419),
                               ),
-                            ),
+                              SizedBox(height: isSmall ? 12 : 16),
+                              Text(
+                                '¡Hola, ${_authService.usuarioActual?.nombre ?? 'Usuario'}!',
+                                style: TextStyle(
+                                  fontSize: isSmall ? 18 : 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xff362419),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Rol: ${_authService.rolActual ?? "Sin rol"}',
+                                style: TextStyle(
+                                  fontSize: isSmall ? 12 : 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -201,17 +260,38 @@ class _DashboardPageState extends State<DashboardPage> {
     return Container(
       width: width,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+      ),
       child: Row(
         children: [
-          Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 28)),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xff362419))),
-                Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff362419),
+                  ),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
               ],
             ),
           ),

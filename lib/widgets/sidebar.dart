@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 
-class Sidebar extends StatefulWidget {
+class SimpleSidebar extends StatefulWidget {
   final String currentPage;
   final VoidCallback onDashboardTap;
   final VoidCallback onInventarioTap;
@@ -12,7 +12,7 @@ class Sidebar extends StatefulWidget {
   final VoidCallback onLogoutTap;
   final bool isMobile;
 
-  const Sidebar({
+  const SimpleSidebar({
     super.key,
     required this.currentPage,
     required this.onDashboardTap,
@@ -26,85 +26,88 @@ class Sidebar extends StatefulWidget {
   });
 
   @override
-  State<Sidebar> createState() => _SidebarState();
+  State<SimpleSidebar> createState() => _SimpleSidebarState();
 }
 
-class _SidebarState extends State<Sidebar> {
+class _SimpleSidebarState extends State<SimpleSidebar> {
   bool _isExpanded = true;
   final AuthService _authService = AuthService();
 
-  void _toggleSidebar() {
-    setState(() => _isExpanded = !_isExpanded);
-  }
+  void _toggle() => setState(() => _isExpanded = !_isExpanded);
 
   @override
   Widget build(BuildContext context) {
-    // En móvil, usar Drawer
-    if (widget.isMobile) {
-      return _buildDrawer();
-    }
+    if (widget.isMobile) return _buildDrawer();
 
-    // En desktop/tablet, sidebar con animación
+    final double width = _isExpanded ? 240 : 72;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
-      width: _isExpanded ? 240 : 70,
+      width: width,
       color: const Color(0xff362419),
-      child: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  if (_authService.esAdmin || _authService.esSupervisor)
-                    _buildSidebarItem(Icons.dashboard, 'Dashboard', isActive: widget.currentPage == 'dashboard', onTap: widget.onDashboardTap),
-                  _buildSidebarItem(Icons.inventory_2, 'Inventario', isActive: widget.currentPage == 'inventario', onTap: widget.onInventarioTap),
-                  _buildSidebarItem(Icons.point_of_sale, 'Ventas', isActive: widget.currentPage == 'ventas', onTap: widget.onVentasTap),
-                  if (_authService.esSupervisor)
-                    _buildSidebarItem(Icons.analytics, 'Estadísticas', isActive: widget.currentPage == 'estadisticas', onTap: widget.onEstadisticasTap),
-                  if (_authService.esAdmin)
-                    _buildSidebarItem(Icons.people, 'Empleados', isActive: widget.currentPage == 'empleados', onTap: widget.onEmpleadosTap),
-                  const Padding(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Divider(color: Colors.white24, height: 1)),
-                  if (_authService.esAdmin)
-                    _buildSidebarItem(Icons.settings, 'Configuración', isActive: widget.currentPage == 'configuracion', onTap: widget.onConfiguracionTap),
-                ],
+      child: ClipRect(
+        child: Column(
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: _menuItems(isDrawer: false),
               ),
             ),
-          ),
-          _buildSidebarItem(Icons.logout, 'Cerrar Sesión', isActive: false, onTap: widget.onLogoutTap, isLogout: true),
-          const SizedBox(height: 16),
-        ],
+            _buildLogout(isDrawer: false),
+            const SizedBox(height: 12),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-      child: Row(
-        mainAxisAlignment: _isExpanded ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
-        children: [
-          if (_isExpanded)
-            Row(
-              children: [
-                Image.asset('assets/logo1.png', width: 32, height: 32, errorBuilder: (c, e, s) => const Icon(Icons.pets, color: Colors.white, size: 32)),
-                const SizedBox(width: 10),
-                const Text('Coffee Cat', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              ],
-            )
-          else
-            Image.asset('assets/logo1.png', width: 36, height: 36, errorBuilder: (c, e, s) => const Icon(Icons.pets, color: Colors.white, size: 36)),
-          if (_isExpanded)
-            InkWell(
-              onTap: _toggleSidebar,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                child: const Icon(Icons.chevron_left, color: Color(0xffCFCFCD), size: 22),
+    return SizedBox(
+      height: 60,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: _isExpanded
+            ? Row(
+                children: [
+                  Image.asset(
+                    'assets/logo1.png',
+                    width: 32,
+                    height: 32,
+                    errorBuilder: (c, e, s) =>
+                        const Icon(Icons.pets, color: Colors.white, size: 32),
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Coffee Cat',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left, color: Color(0xffCFCFCD)),
+                    onPressed: _toggle,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              )
+            : Center(
+                child: IconButton(
+                  icon: const Icon(Icons.chevron_right, color: Color(0xffCFCFCD)),
+                  onPressed: _toggle,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
               ),
-            ),
-        ],
       ),
     );
   }
@@ -116,17 +119,30 @@ class _SidebarState extends State<Sidebar> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(18),
               child: Row(
                 children: [
-                  Image.asset('assets/logo1.png', width: 40, height: 40, errorBuilder: (c, e, s) => const Icon(Icons.pets, color: Colors.white, size: 40)),
+                  Image.asset(
+                    'assets/logo1.png',
+                    width: 40,
+                    height: 40,
+                    errorBuilder: (c, e, s) =>
+                        const Icon(Icons.pets, color: Colors.white, size: 40),
+                  ),
                   const SizedBox(width: 12),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Coffee Cat', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text('Sistema de Gestión', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                    ],
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Coffee Cat',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)),
+                        Text('Sistema de Gestión',
+                            style: TextStyle(color: Colors.grey, fontSize: 11)),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -135,108 +151,135 @@ class _SidebarState extends State<Sidebar> {
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
-                children: [
-                  if (_authService.esAdmin || _authService.esSupervisor)
-                    _buildDrawerItem(Icons.dashboard, 'Dashboard', isActive: widget.currentPage == 'dashboard', onTap: () {
-                      Navigator.pop(context);
-                      widget.onDashboardTap();
-                    }),
-                  _buildDrawerItem(Icons.inventory_2, 'Inventario', isActive: widget.currentPage == 'inventario', onTap: () {
-                    Navigator.pop(context);
-                    widget.onInventarioTap();
-                  }),
-                  _buildDrawerItem(Icons.point_of_sale, 'Ventas', isActive: widget.currentPage == 'ventas', onTap: () {
-                    Navigator.pop(context);
-                    widget.onVentasTap();
-                  }),
-                  if (_authService.esSupervisor)
-                    _buildDrawerItem(Icons.analytics, 'Estadísticas', isActive: widget.currentPage == 'estadisticas', onTap: () {
-                      Navigator.pop(context);
-                      widget.onEstadisticasTap();
-                    }),
-                  if (_authService.esAdmin)
-                    _buildDrawerItem(Icons.people, 'Empleados', isActive: widget.currentPage == 'empleados', onTap: () {
-                      Navigator.pop(context);
-                      widget.onEmpleadosTap();
-                    }),
-                  const Divider(color: Colors.white24),
-                  if (_authService.esAdmin)
-                    _buildDrawerItem(Icons.settings, 'Configuración', isActive: widget.currentPage == 'configuracion', onTap: () {
-                      Navigator.pop(context);
-                      widget.onConfiguracionTap();
-                    }),
-                ],
+                children: _menuItems(isDrawer: true),
               ),
             ),
-            _buildDrawerItem(Icons.logout, 'Cerrar Sesión', isActive: false, onTap: () {
-              Navigator.pop(context);
-              widget.onLogoutTap();
-            }, isLogout: true),
-            const SizedBox(height: 16),
+            _buildLogout(isDrawer: true),
+            const SizedBox(height: 12),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSidebarItem(IconData icon, String title, {bool isActive = false, VoidCallback? onTap, bool isLogout = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: EdgeInsets.symmetric(horizontal: _isExpanded ? 14 : 0, vertical: 10),
-            decoration: BoxDecoration(
-              color: isActive ? const Color(0xff55453A) : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: isActive ? const Border(left: BorderSide(color: Color(0xffCFCFCD), width: 3)) : null,
-            ),
-            child: _isExpanded
-                ? Row(
-                    children: [
-                      Icon(icon, color: isActive ? Colors.white : (isLogout ? Colors.red[300] : const Color(0xffCFCFCD)), size: 20),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                            color: isActive ? Colors.white : (isLogout ? Colors.red[300] : const Color(0xffCFCFCD)),
-                            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                            fontSize: 14,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    required bool active,
+    required VoidCallback onTap,
+    required bool isDrawer,
+    bool isLogout = false,
+  }) {
+    final Color itemColor =
+        active ? Colors.white : (isLogout ? Colors.red[300]! : const Color(0xffCFCFCD));
+
+    if (isDrawer) {
+      return ListTile(
+        leading: Icon(icon, color: itemColor),
+        title: Text(title,
+            style: TextStyle(
+                color: itemColor, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+        tileColor: active ? const Color(0xff55453A) : Colors.transparent,
+        onTap: () {
+          Navigator.pop(context);
+          onTap();
+        },
+        dense: true,
+      );
+    }
+
+    // Modo Desktop / Web totalmente aislado para prevenir overflow
+    return Container(
+      height: 44,
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: active ? const Color(0xff55453A) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        border: (active && _isExpanded)
+            ? const Border(left: BorderSide(color: Color(0xffCFCFCD), width: 3))
+            : null,
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: _isExpanded
+            ? Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Icon(icon, color: itemColor, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          color: itemColor,
+                          fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                          fontSize: 14,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
-                    ],
-                  )
-                : Center(
-                    child: Icon(
-                      icon,
-                      color: isActive ? Colors.white : (isLogout ? Colors.red[300] : const Color(0xffCFCFCD)),
-                      size: 22,
                     ),
-                  ),
-          ),
-        ),
+                  ],
+                ),
+              )
+            : Center(
+                child: Icon(icon, color: itemColor, size: 20),
+              ),
       ),
     );
   }
 
-  Widget _buildDrawerItem(IconData icon, String title, {bool isActive = false, VoidCallback? onTap, bool isLogout = false}) {
-    return ListTile(
-      leading: Icon(icon, color: isActive ? Colors.white : (isLogout ? Colors.red[300] : const Color(0xffCFCFCD)), size: 22),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isActive ? Colors.white : (isLogout ? Colors.red[300] : const Color(0xffCFCFCD)),
-          fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-        ),
-      ),
-      tileColor: isActive ? const Color(0xff55453A) : Colors.transparent,
-      onTap: onTap,
+  List<Widget> _menuItems({required bool isDrawer}) {
+    final List<Widget> items = [];
+
+    void add(IconData icon, String title, bool active, VoidCallback onTap,
+        {bool isLogout = false}) {
+      items.add(_buildMenuItem(
+        icon: icon,
+        title: title,
+        active: active,
+        onTap: onTap,
+        isDrawer: isDrawer,
+        isLogout: isLogout,
+      ));
+    }
+
+    if (_authService.esAdmin || _authService.esSupervisor) {
+      add(Icons.dashboard, 'Dashboard', widget.currentPage == 'dashboard', widget.onDashboardTap);
+    }
+    add(Icons.inventory_2, 'Inventario', widget.currentPage == 'inventario', widget.onInventarioTap);
+    add(Icons.point_of_sale, 'Ventas', widget.currentPage == 'ventas', widget.onVentasTap);
+    if (_authService.esSupervisor) {
+      add(Icons.analytics, 'Estadísticas', widget.currentPage == 'estadisticas',
+          widget.onEstadisticasTap);
+    }
+    if (_authService.esAdmin) {
+      add(Icons.people, 'Empleados', widget.currentPage == 'empleados', widget.onEmpleadosTap);
+    }
+
+    items.add(const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Divider(color: Colors.white24),
+    ));
+
+    if (_authService.esAdmin) {
+      add(Icons.settings, 'Configuración', widget.currentPage == 'configuracion',
+          widget.onConfiguracionTap);
+    }
+
+    return items;
+  }
+
+  Widget _buildLogout({required bool isDrawer}) {
+    return _buildMenuItem(
+      icon: Icons.logout,
+      title: 'Cerrar Sesión',
+      active: false,
+      onTap: widget.onLogoutTap,
+      isDrawer: isDrawer,
+      isLogout: true,
     );
   }
 }
