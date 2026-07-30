@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'welcome.dart'; // ← CAMBIO 1: Importamos la nueva pantalla de bienvenida
+import 'package:firebase_auth/firebase_auth.dart';
+import 'welcome.dart';
+import 'dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,9 +30,32 @@ class MyApp extends StatelessWidget {
       title: 'Coffee Cat',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.brown, // Tema consistente con tu marca
+        primarySwatch: Colors.brown,
       ),
-      home: const WelcomeScreen(), // ← CAMBIO 2: La app ahora inicia aquí
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          // Mientras Firebase comprueba el estado de la sesión al recargar
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              backgroundColor: Color(0xff362419),
+              body: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xffCFCFCD),
+                ),
+              ),
+            );
+          }
+
+          // Si la sesión está activa en el navegador
+          if (snapshot.hasData && snapshot.data != null) {
+            return const DashboardPage();
+          }
+
+          // Si no hay sesión activa
+          return const WelcomeScreen();
+        },
+      ),
     );
   }
 }

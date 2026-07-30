@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dashboard.dart';
 import 'services/auth_service.dart';
+import 'dashboard.dart'; // O el nombre correcto del archivo de tu Dashboard
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -37,7 +37,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (mounted && usuario != null) {
-        // Mostrar mensaje personalizado según el rol
+        // Mensaje de éxito
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -50,14 +50,12 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
 
-        await Future.delayed(const Duration(milliseconds: 800));
-
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const DashboardPage()),
-          );
-        }
+        // NAVEGACIÓN DIRECTA AL DASHBOARD
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardPage()),
+          (route) => false,
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -78,7 +76,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ CORREGIDO: Se reemplazó .withOpacity() por .withValues(alpha:)
     final Color inputFillColor = Colors.white.withValues(alpha: 0.4);
     const Color brandColor = Color(0xff55453A);
 
