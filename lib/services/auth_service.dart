@@ -42,6 +42,37 @@ class AuthService {
   String? get rolActual => _usuarioActual?.rol;
   User? get firebaseUser => _auth.currentUser;
 
+  /// Stream para escuchar el estado de autenticación desde cualquier widget o main.dart
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  /// Carga los datos de Firestore si hay una sesión activa de Firebase al recargar (F5)
+  Future<UsuarioModel?> cargarUsuarioActual() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      _usuarioActual = null;
+      return null;
+    }
+
+    try {
+      DocumentSnapshot userDoc = await _firestore.collection('usuarios').doc(user.uid).get();
+
+      if (userDoc.exists) {
+        _usuarioActual = UsuarioModel.fromFirestore(userDoc);
+        if (!_usuarioActual!.activo) {
+          await logout();
+          return null;
+        }
+        return _usuarioActual;
+      } else {
+        await logout();
+        return null;
+      }
+    } catch (e) {
+      _usuarioActual = null;
+      return null;
+    }
+  }
+
   Future<UsuarioModel?> login(String email, String password) async {
     try {
       if (_auth.currentUser != null) {
@@ -69,8 +100,8 @@ class AuthService {
       }
     } on FirebaseAuthException catch (e) {
       String mensaje = 'Error al iniciar sesión';
-      if (e.code == 'user-not-found') {
-        mensaje = 'No existe una cuenta con este correo';
+      if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+        mensaje = 'No existe una cuenta o las credenciales son incorrectas';
       } else if (e.code == 'wrong-password') {
         mensaje = 'Contraseña incorrecta';
       } else if (e.code == 'invalid-email') {
