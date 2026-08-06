@@ -763,7 +763,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
