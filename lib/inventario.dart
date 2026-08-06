@@ -731,6 +731,38 @@ class _InventarioScreenState extends State<InventarioScreen> {
                                         'https://i.postimg.cc/4dDrtZK2/croissant.jpg',
                                     'Michi-Muffin':
                                         'https://i.postimg.cc/Hxqf5HJB/muffin.jpg',
+                                    'Gato Negro':
+                                        'https://i.postimg.cc/ry0cWXtf/Gato-Negro.jpg',
+                                    'Persa Blanco':
+                                        'https://i.postimg.cc/xjJYHDbR/Persa-Blanco.jpg',
+                                    'Ronroneo de Caramelo':
+                                        'https://i.postimg.cc/tRKbNShN/Ronroneo-de-Caramelo.jpg',
+                                    'Zarpazo Espresso':
+                                        'https://i.postimg.cc/sfkz46pc/Zarpazo-Espresso.jpg',
+                                    'Chocolate Purrfecto':
+                                        'https://i.postimg.cc/3rshFSg1/Chocolate-Purrfecto.jpg',
+                                    'Michi Iced Latte':
+                                        'https://i.postimg.cc/447ZtkhQ/Michi-Iced-Latte.jpg',
+                                    'Matcha Gato Relax':
+                                        'https://i.postimg.cc/qBh0nVC2/Matcha-Gato-Relax.jpg',
+                                    'Limonada del Gato con Botas':
+                                        'https://i.postimg.cc/ry0cWXtS/Limonada-del-Gato-con-Botas.jpg',
+                                    'Affogato "Cozy Murr"':
+                                        'https://i.postimg.cc/pVhx8bn0/Affogato-Cozy-Murr.jpg',
+                                    'Boba Kat':
+                                        'https://i.postimg.cc/FFdmc5JG/Boba-Kat.jpg',
+                                    'Cat-shake':
+                                        'https://i.postimg.cc/dQbFjH8n/Cat-shake.jpg',
+                                    'Galletas "Huellitas de Amor"':
+                                        'https://i.postimg.cc/c1gZYy8R/Galletas-Huellitas-de-Amor.jpg',
+                                    'Cheesecake "Tres Colores"':
+                                        'https://i.postimg.cc/jqwKN0Jg/Cheesecake-Tres-Colores.jpg',
+                                    'Brownie "Dormilón"':
+                                        'https://i.postimg.cc/G38rYwsG/Brownie-Dormilon.jpg',
+                                    'Michi Donut':
+                                        'https://i.postimg.cc/J7DmJVBx/Michi-Donut.jpg',
+                                    'Pastel "Choco-Meow"':
+                                        'https://i.postimg.cc/KckFLSgs/Pastel-Choco-Meow.jpg',
                                   };
 
                                   if (imagenesPorDefecto.containsKey(nombre)) {
