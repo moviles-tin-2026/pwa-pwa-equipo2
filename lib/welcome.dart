@@ -43,7 +43,8 @@ class _OptimizedBackground extends StatelessWidget {
         fit: BoxFit.cover,
         cacheWidth: 1920,
         cacheHeight: 1080,
-        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+        // ✅ CORREGIDO
+        errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
       ),
     );
   }
@@ -131,7 +132,12 @@ class _LogoWidget extends StatelessWidget {
       width: size, height: size,
       decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0x1A362419), border: Border.all(color: const Color(0xff362419), width: 3)),
       child: ClipOval(
-        child: Image.asset('assets/logo1.webp', width: size, height: size, fit: BoxFit.contain, cacheWidth: 260, cacheHeight: 260, errorBuilder: (_, _, _) => const Icon(Icons.pets, size: 70, color: Color(0xff362419))),
+        child: Image.asset(
+          'assets/logo1.webp', 
+          width: size, height: size, fit: BoxFit.contain, cacheWidth: 260, cacheHeight: 260, 
+          // ✅ CORREGIDO
+          errorBuilder: (context, error, stackTrace) => const Icon(Icons.pets, size: 70, color: Color(0xff362419))
+        ),
       ),
     );
   }

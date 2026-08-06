@@ -61,7 +61,8 @@ class _LoginPageState extends State<LoginPage> {
                 fit: BoxFit.cover,
                 cacheWidth: 800,
                 cacheHeight: 1200,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                // ✅ CORREGIDO: Nombres de parámetros válidos
+                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
               ),
             ),
           ),
@@ -95,7 +96,8 @@ class _LoginPageState extends State<LoginPage> {
                           height: 100,
                           cacheWidth: 200,
                           cacheHeight: 200,
-                          errorBuilder: (_, _, _) => const Icon(Icons.pets, size: 80, color: Color(0xff362419)),
+                          // ✅ CORREGIDO: Nombres de parámetros válidos
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.pets, size: 80, color: Color(0xff362419)),
                         ),
                         const SizedBox(height: 16),
                         const Text(

@@ -45,7 +45,7 @@ class _VentasPageState extends State<VentasPage> {
 
   double get _totalVenta => _carrito.fold(0.0, (total, item) => total + item.subtotal);
 
-  final Map<String, String> _imagenesPorDefecto = {
+  static const Map<String, String> _imagenesPorDefecto = {
     'Miau Latte': 'https://i.postimg.cc/VvGcnz49/Whats-App-Image-2026-07-15-at-5-44-43-PM.jpg',
     'Capuchino Bigotes': 'https://i.postimg.cc/qqbdypQP/Whats-App-Image-2026-07-15-at-5-44-44-PM.jpg',
     'Cold Brew Nocturno': 'https://i.postimg.cc/YqYtdDMs/coldbrew.jpg',
@@ -60,7 +60,7 @@ class _VentasPageState extends State<VentasPage> {
     if (stockDisponible <= 0) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Producto sin stock'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Producto sin stock'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
       );
       return;
     }
@@ -73,7 +73,7 @@ class _VentasPageState extends State<VentasPage> {
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Stock máximo alcanzado'), backgroundColor: Colors.orange),
+              const SnackBar(content: Text('Stock máximo alcanzado'), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating),
             );
           }
         }
@@ -120,22 +120,32 @@ class _VentasPageState extends State<VentasPage> {
     if (_carrito.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Agrega productos al carrito'), backgroundColor: Colors.orange),
+        const SnackBar(content: Text('Agrega productos al carrito'), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating),
       );
       return;
     }
     if (_metodoPago == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona método de pago'), backgroundColor: Colors.orange),
+        const SnackBar(content: Text('Selecciona método de pago'), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating),
       );
       return;
     }
 
     if (!mounted) return;
-    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xff362419))));
 
     try {
+      final usuarioEmail = FirebaseAuth.instance.currentUser?.email ?? 'desconocido';
+      final itemsParaGuardar = _carrito.map((item) => {
+        'id': item.id,
+        'nombre': item.nombre,
+        'precio': item.precio,
+        'cantidad': item.cantidad,
+      }).toList();
+      final total = _totalVenta;
+      final metodo = _metodoPago;
+
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         for (var item in _carrito) {
           final productoRef = _productosRef.doc(item.id);
@@ -156,16 +166,11 @@ class _VentasPageState extends State<VentasPage> {
 
         final nuevaVentaRef = _ventasRef.doc();
         transaction.set(nuevaVentaRef, {
-          'productos': _carrito.map((item) => {
-            'id': item.id,
-            'nombre': item.nombre,
-            'precio': item.precio,
-            'cantidad': item.cantidad,
-          }).toList(),
-          'total': _totalVenta,
-          'metodo_pago': _metodoPago,
+          'productos': itemsParaGuardar,
+          'total': total,
+          'metodo_pago': metodo,
           'fecha': FieldValue.serverTimestamp(),
-          'usuario': FirebaseAuth.instance.currentUser?.email ?? 'desconocido',
+          'usuario': usuarioEmail,
         });
       });
 
@@ -177,7 +182,7 @@ class _VentasPageState extends State<VentasPage> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
         );
       }
     }
@@ -195,7 +200,7 @@ class _VentasPageState extends State<VentasPage> {
           children: [
             Icon(Icons.check_circle, color: Colors.green),
             SizedBox(width: 8),
-            Text('Venta Exitosa', style: TextStyle(color: Color(0xff362419))),
+            Text('Venta Exitosa', style: TextStyle(color: Color(0xff362419), fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
@@ -346,51 +351,11 @@ class _VentasPageState extends State<VentasPage> {
                   itemCount: _carrito.length,
                   itemBuilder: (context, index) {
                     final item = _carrito[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      elevation: 0,
-                      color: Colors.grey[100],
-                      child: ListTile(
-                        dense: true,
-                        leading: item.urlImagen != null && item.urlImagen!.isNotEmpty
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: Image.network(
-                                  item.urlImagen!,
-                                  width: 40,
-                                  height: 40,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => const Icon(Icons.local_cafe, size: 24),
-                                ),
-                              )
-                            : const Icon(Icons.local_cafe, size: 24),
-                        title: Text(item.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        subtitle: Text('\$${item.precio.toStringAsFixed(2)} c/u'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.remove, size: 18), 
-                              onPressed: () => _actualizarCantidad(item.id, item.cantidad - 1),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                            SizedBox(width: 20, child: Text('${item.cantidad}', style: const TextStyle(fontWeight: FontWeight.bold))),
-                            IconButton(
-                              icon: const Icon(Icons.add, size: 18), 
-                              onPressed: () => _actualizarCantidad(item.id, item.cantidad + 1),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red, size: 18), 
-                              onPressed: () => _eliminarDelCarrito(item.id),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
-                        ),
-                      ),
+                    return _CartItemWidget(
+                      item: item,
+                      onDecrement: () => _actualizarCantidad(item.id, item.cantidad - 1),
+                      onIncrement: () => _actualizarCantidad(item.id, item.cantidad + 1),
+                      onRemove: () => _eliminarDelCarrito(item.id),
                     );
                   },
                 ),
@@ -467,8 +432,9 @@ class _VentasPageState extends State<VentasPage> {
 }
 
 // ============================================================================
-// WIDGET SEPARADO PARA EL PRODUCTO
+// WIDGETS EXTRAÍDOS (Aíslan los rebuilds para máximo rendimiento)
 // ============================================================================
+
 class _ProductoCard extends StatelessWidget {
   final DocumentSnapshot producto;
   final Map<String, dynamic> data;
@@ -579,6 +545,75 @@ class _ProductoCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CartItemWidget extends StatelessWidget {
+  final ItemCarrito item;
+  final VoidCallback onDecrement;
+  final VoidCallback onIncrement;
+  final VoidCallback onRemove;
+
+  const _CartItemWidget({
+    required this.item,
+    required this.onDecrement,
+    required this.onIncrement,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      elevation: 0,
+      color: Colors.grey[100],
+      child: ListTile(
+        dense: true,
+        leading: item.urlImagen != null && item.urlImagen!.isNotEmpty
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.network(
+                  item.urlImagen!,
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.cover,
+                  cacheWidth: 80,
+                  cacheHeight: 80,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.local_cafe, size: 24), // ✅ CORREGIDO
+                ),
+              )
+            : const Icon(Icons.local_cafe, size: 24),
+        title: Text(item.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        subtitle: Text('\$${item.precio.toStringAsFixed(2)} c/u'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.remove, size: 18), 
+              onPressed: onDecrement,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            SizedBox(
+              width: 30,
+              child: Text('${item.cantidad}', style: const TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add, size: 18), 
+              onPressed: onIncrement,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red, size: 18), 
+              onPressed: onRemove,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
         ),
       ),
     );

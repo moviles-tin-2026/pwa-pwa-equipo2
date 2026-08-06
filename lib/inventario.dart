@@ -1,10 +1,7 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// ============================================================================
-// PANTALLA DE INVENTARIO ULTRA-OPTIMIZADA
-// ============================================================================
 class InventarioScreen extends StatefulWidget {
   const InventarioScreen({super.key});
 
@@ -15,7 +12,6 @@ class InventarioScreen extends StatefulWidget {
 class _InventarioScreenState extends State<InventarioScreen> {
   final CollectionReference _productosRef = FirebaseFirestore.instance.collection('productos');
 
-  // ✅ OPTIMIZACIÓN: Un solo stream para toda la pantalla
   StreamSubscription<QuerySnapshot>? _productosSub;
   List<QueryDocumentSnapshot> _productos = [];
   bool _isLoading = true;
@@ -36,27 +32,38 @@ class _InventarioScreenState extends State<InventarioScreen> {
   final ScrollController _bajoStockScrollController = ScrollController();
   List<QueryDocumentSnapshot> _documentosBajoStock = [];
 
-  // ✅ OPTIMIZACIÓN: static const evita recrear el mapa en memoria
   static const Map<String, String> _imagenesPorDefecto = {
     'Miau Latte': 'https://i.postimg.cc/VvGcnz49/Whats-App-Image-2026-07-15-at-5-44-43-PM.jpg',
     'Capuchino Bigotes': 'https://i.postimg.cc/qqbdypQP/Whats-App-Image-2026-07-15-at-5-44-44-PM.jpg',
     'Cold Brew Nocturno': 'https://i.postimg.cc/YqYtdDMs/coldbrew.jpg',
     'Purr Croissant': 'https://i.postimg.cc/4dDrtZK2/croissant.jpg',
     'Michi-Muffin': 'https://i.postimg.cc/Hxqf5HJB/muffin.jpg',
+    'Gato Negro': 'https://i.postimg.cc/ry0cWXtf/Gato-Negro.jpg',
+    'Persa Blanco': 'https://i.postimg.cc/xjJYHDbR/Persa-Blanco.jpg',
+    'Ronroneo de Caramelo': 'https://i.postimg.cc/tRKbNShN/Ronroneo-de-Caramelo.jpg',
+    'Zarpazo Espresso': 'https://i.postimg.cc/sfkz46pc/Zarpazo-Espresso.jpg',
+    'Chocolate Purrfecto': 'https://i.postimg.cc/3rshFSg1/Chocolate-Purrfecto.jpg',
+    'Michi Iced Latte': 'https://i.postimg.cc/447ZtkhQ/Michi-Iced-Latte.jpg',
+    'Matcha Gato Relax': 'https://i.postimg.cc/qBh0nVC2/Matcha-Gato-Relax.jpg',
+    'Limonada del Gato con Botas': 'https://i.postimg.cc/ry0cWXtS/Limonada-del-Gato-con-Botas.jpg',
+    'Affogato "Cozy Murr"': 'https://i.postimg.cc/pVhx8bn0/Affogato-Cozy-Murr.jpg',
+    'Boba Kat': 'https://i.postimg.cc/FFdmc5JG/Boba-Kat.jpg',
+    'Cat-shake': 'https://i.postimg.cc/dQbFjH8n/Cat-shake.jpg',
+    'Galletas "Huellitas de Amor"': 'https://i.postimg.cc/c1gZYy8R/Galletas-Huellitas-de-Amor.jpg',
+    'Cheesecake "Tres Colores"': 'https://i.postimg.cc/jqwKN0Jg/Cheesecake-Tres-Colores.jpg',
+    'Brownie "Dormilón"': 'https://i.postimg.cc/G38rYwsG/Brownie-Dormilon.jpg',
+    'Michi Donut': 'https://i.postimg.cc/J7DmJVBx/Michi-Donut.jpg',
+    'Pastel "Choco-Meow"': 'https://i.postimg.cc/KckFLSgs/Pastel-Choco-Meow.jpg',
   };
 
   @override
   void initState() {
     super.initState();
-    
-    // ✅ OPTIMIZACIÓN: Un solo listener para toda la colección
     _productosSub = _productosRef.orderBy('nombre').snapshots().listen((snapshot) {
       if (mounted) {
         setState(() {
           _productos = snapshot.docs;
           _isLoading = false;
-          
-          // Actualizamos la lista de bajo stock sincrónicamente desde los mismos datos
           _documentosBajoStock = snapshot.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>?;
             return data != null && ((int.tryParse(data['cantidad']?.toString() ?? '0') ?? 0) <= 5);
@@ -68,7 +75,7 @@ class _InventarioScreenState extends State<InventarioScreen> {
 
   @override
   void dispose() {
-    _productosSub?.cancel(); // ✅ Importante: cancelar el stream
+    _productosSub?.cancel();
     _nombreController.dispose();
     _cantidadController.dispose();
     _precioController.dispose();
@@ -194,7 +201,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Pantalla de carga inicial rápida
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Color(0xffF5F0EB),
@@ -202,7 +208,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
       );
     }
 
-    // ✅ OPTIMIZACIÓN: Cálculos sincrónicos desde la única fuente de datos
     int total = 0;
     int bajoStock = 0;
     double valor = 0;
@@ -219,7 +224,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
       total++;
     }
 
-    // Filtrar productos para el grid
     var docs = _productos;
     if (_selectedFilter != 'Todos') {
       docs = docs.where((doc) {
@@ -258,10 +262,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
       ),
     );
   }
-
-  // --------------------------------------------------------------------------
-  // WIDGETS EXTRAÍDOS (Máximo rendimiento con 'const')
-  // --------------------------------------------------------------------------
 
   Widget _buildHeader() {
     return Row(
@@ -470,13 +470,13 @@ class _InventarioScreenState extends State<InventarioScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            // ✅ OPTIMIZACIÓN: Ya no hay StreamBuilder aquí. Usamos los datos precalculados.
             child: _documentosBajoStock.isEmpty 
               ? const Center(child: Text('Sin productos con bajo stock', style: TextStyle(color: Colors.grey, fontSize: 12)))
               : ListView.separated(
                   controller: _bajoStockScrollController,
                   itemCount: _documentosBajoStock.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  // ✅ CORREGIDO: Usar (context, index) en lugar de (_, _)
+                  separatorBuilder: (context, index) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final data = _documentosBajoStock[index].data() as Map<String, dynamic>;
                     return ListTile(
@@ -510,9 +510,6 @@ class _InventarioScreenState extends State<InventarioScreen> {
   }
 }
 
-// ============================================================================
-// WIDGET DE TARJETA DE PRODUCTO (Extraído para máximo rendimiento)
-// ============================================================================
 class _ProductoCardInventario extends StatelessWidget {
   final DocumentSnapshot producto;
   final Map<String, dynamic> data;
@@ -559,8 +556,8 @@ class _ProductoCardInventario extends StatelessWidget {
                   Image.network(
                     urlImagen,
                     fit: BoxFit.cover,
-                    cacheWidth: 150,  // ✅ Clave para Lighthouse
-                    cacheHeight: 150, // ✅ Clave para Lighthouse
+                    cacheWidth: 150,
+                    cacheHeight: 150,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xff362419)));
@@ -636,597 +633,6 @@ class _ProductoCardInventario extends StatelessWidget {
                   ],
                 )
               ],
-                          return LayoutBuilder(
-                            builder: (context, constraints) {
-                              int crossAxisCount;
-                              double childAspectRatio;
-
-                              if (constraints.maxWidth < 600) {
-                                crossAxisCount = 2;
-                                childAspectRatio = 0.75;
-                              } else if (constraints.maxWidth < 900) {
-                                crossAxisCount = 3;
-                                childAspectRatio = 0.80;
-                              } else if (constraints.maxWidth < 1200) {
-                                crossAxisCount = 4;
-                                childAspectRatio = 0.85;
-                              } else {
-                                crossAxisCount = 5;
-                                childAspectRatio = 0.90;
-                              }
-
-                              return GridView.builder(
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: crossAxisCount,
-                                      crossAxisSpacing: 10,
-                                      mainAxisSpacing: 10,
-                                      childAspectRatio: childAspectRatio,
-                                    ),
-                                itemCount: docs.length,
-                                itemBuilder: (context, index) {
-                                  final producto = docs[index];
-                                  final data =
-                                      producto.data() as Map<String, dynamic>?;
-
-                                  if (data == null) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  final String nombre =
-                                      data['nombre']?.toString() ??
-                                      'Sin nombre';
-                                  final int cantidad =
-                                      int.tryParse(
-                                        data['cantidad']?.toString() ?? '0',
-                                      ) ??
-                                      0;
-                                  final double precio =
-                                      double.tryParse(
-                                        data['precio']?.toString() ?? '0.0',
-                                      ) ??
-                                      0.0;
-                                  final String categoria =
-                                      data['categoria']?.toString() ??
-                                      'Bebidas Calientes';
-
-                                  String urlImagen =
-                                      data['url_imagen']?.toString() ?? '';
-
-                                  final Map<String, String>
-                                  imagenesPorDefecto = {
-                                    'Miau Latte':
-                                        'https://i.postimg.cc/VvGcnz49/Whats-App-Image-2026-07-15-at-5-44-43-PM.jpg',
-                                    'Capuchino Bigotes':
-                                        'https://i.postimg.cc/qqbdypQP/Whats-App-Image-2026-07-15-at-5-44-44-PM.jpg',
-                                    'Cold Brew Nocturno':
-                                        'https://i.postimg.cc/YqYtdDMs/coldbrew.jpg',
-                                    'Purr Croissant':
-                                        'https://i.postimg.cc/4dDrtZK2/croissant.jpg',
-                                    'Michi-Muffin':
-                                        'https://i.postimg.cc/Hxqf5HJB/muffin.jpg',
-                                    'Gato Negro':
-                                        'https://i.postimg.cc/ry0cWXtf/Gato-Negro.jpg',
-                                    'Persa Blanco':
-                                        'https://i.postimg.cc/xjJYHDbR/Persa-Blanco.jpg',
-                                    'Ronroneo de Caramelo':
-                                        'https://i.postimg.cc/tRKbNShN/Ronroneo-de-Caramelo.jpg',
-                                    'Zarpazo Espresso':
-                                        'https://i.postimg.cc/sfkz46pc/Zarpazo-Espresso.jpg',
-                                    'Chocolate Purrfecto':
-                                        'https://i.postimg.cc/3rshFSg1/Chocolate-Purrfecto.jpg',
-                                    'Michi Iced Latte':
-                                        'https://i.postimg.cc/447ZtkhQ/Michi-Iced-Latte.jpg',
-                                    'Matcha Gato Relax':
-                                        'https://i.postimg.cc/qBh0nVC2/Matcha-Gato-Relax.jpg',
-                                    'Limonada del Gato con Botas':
-                                        'https://i.postimg.cc/ry0cWXtS/Limonada-del-Gato-con-Botas.jpg',
-                                    'Affogato "Cozy Murr"':
-                                        'https://i.postimg.cc/pVhx8bn0/Affogato-Cozy-Murr.jpg',
-                                    'Boba Kat':
-                                        'https://i.postimg.cc/FFdmc5JG/Boba-Kat.jpg',
-                                    'Cat-shake':
-                                        'https://i.postimg.cc/dQbFjH8n/Cat-shake.jpg',
-                                    'Galletas "Huellitas de Amor"':
-                                        'https://i.postimg.cc/c1gZYy8R/Galletas-Huellitas-de-Amor.jpg',
-                                    'Cheesecake "Tres Colores"':
-                                        'https://i.postimg.cc/jqwKN0Jg/Cheesecake-Tres-Colores.jpg',
-                                    'Brownie "Dormilón"':
-                                        'https://i.postimg.cc/G38rYwsG/Brownie-Dormilon.jpg',
-                                    'Michi Donut':
-                                        'https://i.postimg.cc/J7DmJVBx/Michi-Donut.jpg',
-                                    'Pastel "Choco-Meow"':
-                                        'https://i.postimg.cc/KckFLSgs/Pastel-Choco-Meow.jpg',
-                                  };
-
-                                  if (imagenesPorDefecto.containsKey(nombre)) {
-                                    urlImagen = imagenesPorDefecto[nombre]!;
-                                  }
-
-                                  return Card(
-                                    color: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    clipBehavior: Clip.antiAlias,
-                                    elevation: 1,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          child: Stack(
-                                            fit: StackFit.expand,
-                                            children: [
-                                              Container(
-                                                color: const Color(0xffE5E5E3),
-                                              ),
-                                              if (urlImagen.isNotEmpty)
-                                                Image.network(
-                                                  urlImagen,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder:
-                                                      (
-                                                        context,
-                                                        error,
-                                                        stackTrace,
-                                                      ) => const Icon(
-                                                        Icons.local_cafe,
-                                                        size: 30,
-                                                        color: Color(
-                                                          0xff55453A,
-                                                        ),
-                                                      ),
-                                                )
-                                              else
-                                                const Icon(
-                                                  Icons.local_cafe,
-                                                  size: 30,
-                                                  color: Color(0xff55453A),
-                                                ),
-                                              Positioned(
-                                                top: 6,
-                                                left: 6,
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 5,
-                                                        vertical: 2,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xff362419,
-                                                    ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          6,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    categoria,
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 8,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              if (cantidad <= 5)
-                                                Positioned(
-                                                  top: 6,
-                                                  right: 6,
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 5,
-                                                          vertical: 2,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.red[800],
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            6,
-                                                          ),
-                                                    ),
-                                                    child: const Text(
-                                                      'Bajo',
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 8,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                nombre,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12,
-                                                  color: Color(0xff362419),
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 3),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    '$cantidad uds.',
-                                                    style: TextStyle(
-                                                      color: Colors.grey[700],
-                                                      fontSize: 10,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    '\$${precio.toStringAsFixed(2)}',
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                      color: Color(0xff362419),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: OutlinedButton.icon(
-                                                      style: OutlinedButton.styleFrom(
-                                                        foregroundColor:
-                                                            const Color(
-                                                              0xff362419,
-                                                            ),
-                                                        side: const BorderSide(
-                                                          color: Color(
-                                                            0xff362419,
-                                                          ),
-                                                          width: 0.8,
-                                                        ),
-                                                        shape: RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                6,
-                                                              ),
-                                                        ),
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        minimumSize: const Size(
-                                                          0,
-                                                          24,
-                                                        ),
-                                                      ),
-                                                      onPressed: () =>
-                                                          _cargarProductoParaEditar(
-                                                            producto.id,
-                                                            data,
-                                                          ),
-                                                      icon: const Icon(
-                                                        Icons.edit,
-                                                        size: 12,
-                                                      ),
-                                                      label: const Text(
-                                                        'Editar',
-                                                        style: TextStyle(
-                                                          fontSize: 9,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  IconButton(
-                                                    style: IconButton.styleFrom(
-                                                      backgroundColor:
-                                                          const Color(
-                                                            0xffE5E5E3,
-                                                          ),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              6,
-                                                            ),
-                                                      ),
-                                                      padding: EdgeInsets.zero,
-                                                      minimumSize: const Size(
-                                                        24,
-                                                        24,
-                                                      ),
-                                                    ),
-                                                    icon: const Icon(
-                                                      Icons.delete,
-                                                      color: Colors.red,
-                                                      size: 14,
-                                                    ),
-                                                    onPressed: () =>
-                                                        _eliminarProducto(
-                                                          producto.id,
-                                                        ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: (_showFormPanel || _showLowStockPanel) ? 300 : 0,
-              child: _showFormPanel
-                  ? Container(
-                      color: const Color(0xffEAEAEA),
-                      padding: const EdgeInsets.all(16),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  _isEditing
-                                      ? 'Editar Producto'
-                                      : 'Agregar Producto',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xff362419),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.close,
-                                    color: Colors.red,
-                                    size: 20,
-                                  ),
-                                  onPressed: () =>
-                                      setState(() => _showFormPanel = false),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            _buildLabel('Nombre del producto'),
-                            _buildTextField(_nombreController, 'Ej. Capuchino'),
-                            _buildLabel('Cantidad (stock)'),
-                            _buildTextField(
-                              _cantidadController,
-                              '0',
-                              isNumber: true,
-                            ),
-                            _buildLabel('Precio (\$)'),
-                            _buildTextField(
-                              _precioController,
-                              '0.00',
-                              isNumber: true,
-                            ),
-                            _buildLabel('Categoría'),
-                            _buildTextField(
-                              _categoriaController,
-                              'Bebidas Calientes',
-                            ),
-                            _buildLabel('Descripción'),
-                            _buildTextField(
-                              _descripcionController,
-                              'Notas adicionales',
-                              maxLines: 2,
-                            ),
-                            const SizedBox(height: 20),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 44,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xff362419),
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                onPressed: _procesarGuardado,
-                                icon: Icon(
-                                  _isEditing ? Icons.update : Icons.save,
-                                  size: 16,
-                                ),
-                                label: Text(
-                                  _isEditing ? 'Actualizar' : 'Guardar',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : _showLowStockPanel
-                  ? Container(
-                      color: const Color(0xffEAEAEA),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Row(
-                                children: [
-                                  Text(
-                                    'Bajo Stock',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xff362419),
-                                    ),
-                                  ),
-                                  SizedBox(width: 6),
-                                  Icon(
-                                    Icons.warning_amber,
-                                    color: Colors.red,
-                                    size: 18,
-                                  ),
-                                ],
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: Colors.red,
-                                  size: 20,
-                                ),
-                                onPressed: () =>
-                                    setState(() => _showLowStockPanel = false),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children:
-                                [
-                                  'Todos',
-                                  'Bebidas Calientes',
-                                  'Bebidas Frías',
-                                  'Postres',
-                                ].map((cat) {
-                                  bool isSelected = _bajoStockFilter == cat;
-                                  return InkWell(
-                                    onTap: () =>
-                                        _hacerScrollHaciaCategoria(cat),
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? const Color(0xff362419)
-                                            : Colors.white,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: isSelected
-                                              ? const Color(0xff362419)
-                                              : Colors.grey[300]!,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        cat,
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : const Color(0xff362419),
-                                          fontSize: 11,
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                          ),
-                          const SizedBox(height: 16),
-                          Expanded(
-                            child: StreamBuilder<QuerySnapshot>(
-                              stream: _productosRef.snapshots(),
-                              builder: (context, snapshot) {
-                                if (!snapshot.hasData) {
-                                  return const Center(
-                                    child: CircularProgressIndicator(),
-                                  );
-                                }
-                                var docs = snapshot.data!.docs.where((doc) {
-                                  final data =
-                                      doc.data() as Map<String, dynamic>?;
-                                  if (data == null) return false;
-                                  int cant =
-                                      int.tryParse(
-                                        data['cantidad']?.toString() ?? '0',
-                                      ) ??
-                                      0;
-                                  return cant <= 5;
-                                }).toList();
-
-                                _documentosBajoStock = docs;
-
-                                if (docs.isEmpty) {
-                                  return const Center(
-                                    child: Text(
-                                      'Sin productos con bajo stock',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  );
-                                }
-
-                                return ListView.separated(
-                                  controller: _bajoStockScrollController,
-                                  itemCount: docs.length,
-                                  separatorBuilder: (_, _) =>
-                                      const Divider(height: 1),
-                                  itemBuilder: (context, index) {
-                                    final doc = docs[index];
-                                    final data =
-                                        doc.data() as Map<String, dynamic>;
-                                    return ListTile(
-                                      dense: true,
-                                      title: Text(
-                                        data['nombre'] ?? '',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      subtitle: Text(
-                                        'Stock: ${data['cantidad']}',
-                                        style: const TextStyle(
-                                          color: Colors.red,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : const SizedBox.shrink(),
             ),
           )
         ],
