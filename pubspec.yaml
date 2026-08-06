@@ -38,6 +38,8 @@ dependencies:
   firebase_auth: ^6.5.6
   cloud_firestore: ^6.7.1
   fl_chart: ^0.65.0
+  pdf: ^3.11.0
+  printing: ^5.11.0
 
 dev_dependencies:
   flutter_test:
