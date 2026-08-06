@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class EstadisticasPage extends StatefulWidget {
   const EstadisticasPage({super.key});
@@ -16,214 +19,182 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8), // Fondo ligeramente más gris para contrastar las tarjetas blancas
+      backgroundColor: const Color(0xFFF4F6F8),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- ENCABEZADO ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Estadísticas y Finanzas',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xff362419),
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Resumen operativo y cuentas por pagar',
-                      style: TextStyle(color: Color(0xff55453A), fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Generando reporte PDF...')),
-                    );
-                  },
-                  icon: const Icon(Icons.download_rounded, size: 18),
-                  label: const Text('Exportar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xff362419),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                )
-              ],
-            ),
-            const SizedBox(height: 24),
+        // Envolvemos todo en los StreamBuilders para que el botón "Exportar" tenga acceso a los datos
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('ventas').snapshots(),
+          builder: (context, snapshotVentas) {
+            if (!snapshotVentas.hasData) return const Center(child: CircularProgressIndicator());
 
-            // --- FILTROS DE TIEMPO ---
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _rangos.map((rango) {
-                  final isSelected = _rangoSeleccionado == rango;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 12.0),
-                    child: ChoiceChip(
-                      label: Text(rango),
-                      selected: isSelected,
-                      showCheckmark: false,
-                      selectedColor: const Color(0xff362419),
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        side: BorderSide(
-                          color: isSelected ? const Color(0xff362419) : Colors.grey.shade300,
-                        ),
-                      ),
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : const Color(0xff55453A),
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() {
-                            _rangoSeleccionado = rango;
-                          });
-                        }
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 24),
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('gastos').snapshots(),
+              builder: (context, snapshotGastos) {
+                if (!snapshotGastos.hasData) return const Center(child: CircularProgressIndicator());
 
-            // --- CUERPO DE DATOS ---
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('ventas').snapshots(),
-                builder: (context, snapshotVentas) {
-                  if (!snapshotVentas.hasData) {
-                    return const Center(child: CircularProgressIndicator());
+                final todasLasVentas = snapshotVentas.data!.docs;
+                final todosLosGastos = snapshotGastos.data!.docs;
+                final ahora = DateTime.now();
+
+                // 1. PROCESAR VENTAS
+                final ventasFiltradas = todasLasVentas.where((venta) {
+                  final data = venta.data() as Map<String, dynamic>;
+                  if (!data.containsKey('fecha')) return true;
+                  return _entraEnFiltro((data['fecha'] as Timestamp).toDate().toLocal(), ahora);
+                }).toList();
+
+                int totalVentas = ventasFiltradas.length;
+                double totalIngresos = 0;
+                Map<String, int> conteoProductos = {};
+                Map<int, double> ingresosPorDia = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
+
+                for (var venta in ventasFiltradas) {
+                  final data = venta.data() as Map<String, dynamic>;
+                  double ingresoVenta = (data['total'] ?? 0).toDouble();
+                  totalIngresos += ingresoVenta;
+
+                  if (data.containsKey('fecha')) {
+                    DateTime fecha = (data['fecha'] as Timestamp).toDate().toLocal();
+                    ingresosPorDia[fecha.weekday] = (ingresosPorDia[fecha.weekday] ?? 0) + ingresoVenta;
                   }
 
-                  return StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance.collection('gastos').snapshots(),
-                    builder: (context, snapshotGastos) {
-                      if (!snapshotGastos.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                  final productos = data['productos'] as List<dynamic>? ?? [];
+                  for (var p in productos) {
+                    String nombre = p['nombre'] ?? 'Desconocido';
+                    int cantidad = (p['cantidad'] ?? 1) as int;
+                    conteoProductos[nombre] = (conteoProductos[nombre] ?? 0) + cantidad;
+                  }
+                }
 
-                      final todasLasVentas = snapshotVentas.data!.docs;
-                      final todosLosGastos = snapshotGastos.data!.docs;
-                      final ahora = DateTime.now();
+                // 2. PROCESAR GASTOS Y PAGOS A PROVEEDORES
+                double totalGastosPagados = 0;
+                double cuentasPorPagar = 0;
+                String nombreProximoProveedor = 'Ninguno';
+                String fechaProximoPagoStr = 'Al día';
+                DateTime? fechaMasProxima;
+                List<Map<String, dynamic>> pagosPendientes = [];
 
-                      // 1. PROCESAR VENTAS
-                      final ventasFiltradas = todasLasVentas.where((venta) {
-                        final data = venta.data() as Map<String, dynamic>;
-                        if (!data.containsKey('fecha')) return true;
-                        return _entraEnFiltro((data['fecha'] as Timestamp).toDate().toLocal(), ahora);
-                      }).toList();
+                for (var gasto in todosLosGastos) {
+                  final data = gasto.data() as Map<String, dynamic>;
+                  final monto = (data['monto'] ?? 0).toDouble();
+                  final estado = data['estado'] ?? 'pendiente';
+                  final fecha = data.containsKey('fecha') ? (data['fecha'] as Timestamp).toDate().toLocal() : null;
+                  final proveedor = data['proveedor'] ?? 'Proveedor Desconocido';
 
-                      int totalVentas = ventasFiltradas.length;
-                      double totalIngresos = 0;
-                      int productosVendidos = 0;
-                      Map<String, int> conteoProductos = {};
-                      Map<int, double> ingresosPorDia = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
+                  if (estado == 'pagado' && fecha != null && _entraEnFiltro(fecha, ahora)) {
+                    totalGastosPagados += monto;
+                  }
 
-                      for (var venta in ventasFiltradas) {
-                        final data = venta.data() as Map<String, dynamic>;
-                        double ingresoVenta = (data['total'] ?? 0).toDouble();
-                        totalIngresos += ingresoVenta;
-                        
-                        if (data.containsKey('fecha')) {
-                          DateTime fecha = (data['fecha'] as Timestamp).toDate().toLocal();
-                          ingresosPorDia[fecha.weekday] = (ingresosPorDia[fecha.weekday] ?? 0) + ingresoVenta;
-                        }
+                  if (estado == 'pendiente') {
+                    cuentasPorPagar += monto;
+                    String fechaStr = fecha != null
+                        ? '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}'
+                        : 'Sin fecha registrada';
 
-                        final productos = data['productos'] as List<dynamic>? ?? [];
-                        for (var p in productos) {
-                          String nombre = p['nombre'] ?? 'Desconocido';
-                          int cantidad = (p['cantidad'] ?? 1) as int;
-                          productosVendidos += cantidad;
-                          conteoProductos[nombre] = (conteoProductos[nombre] ?? 0) + cantidad;
-                        }
-                      }
+                    pagosPendientes.add({'proveedor': proveedor, 'monto': monto, 'fecha': fecha, 'fechaStr': fechaStr});
 
-                      // 2. PROCESAR GASTOS Y PAGOS A PROVEEDORES
-                      double totalGastosPagados = 0;
-                      double cuentasPorPagar = 0;
-                      String nombreProximoProveedor = 'Ninguno';
-                      String fechaProximoPagoStr = 'Al día';
-                      DateTime? fechaMasProxima;
-                      
-                      // Estructura para almacenar la lista detallada de pagos pendientes
-                      List<Map<String, dynamic>> pagosPendientes = [];
+                    if (fecha != null && (fechaMasProxima == null || fecha.isBefore(fechaMasProxima))) {
+                      fechaMasProxima = fecha;
+                      nombreProximoProveedor = proveedor;
+                      fechaProximoPagoStr = fechaStr;
+                    }
+                  }
+                }
 
-                      for (var gasto in todosLosGastos) {
-                        final data = gasto.data() as Map<String, dynamic>;
-                        final monto = (data['monto'] ?? 0).toDouble();
-                        final estado = data['estado'] ?? 'pendiente';
-                        final fecha = data.containsKey('fecha') ? (data['fecha'] as Timestamp).toDate().toLocal() : null;
-                        final proveedor = data['proveedor'] ?? 'Proveedor Desconocido';
+                pagosPendientes.sort((a, b) {
+                  if (a['fecha'] == null) return 1;
+                  if (b['fecha'] == null) return -1;
+                  return (a['fecha'] as DateTime).compareTo(b['fecha'] as DateTime);
+                });
 
-                        if (estado == 'pagado' && fecha != null && _entraEnFiltro(fecha, ahora)) {
-                          totalGastosPagados += monto;
-                        }
+                double gananciaNeta = totalIngresos - totalGastosPagados;
+                var productosOrdenados = conteoProductos.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+                var top5 = productosOrdenados.take(5).toList();
+                var bottom5 = productosOrdenados.length > 5 ? productosOrdenados.skip(5).toList().reversed.take(5).toList() : <MapEntry<String, int>>[];
 
-                        if (estado == 'pendiente') {
-                          cuentasPorPagar += monto;
-                          
-                          String fechaStr = fecha != null 
-                              ? '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}' 
-                              : 'Sin fecha registrada';
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // --- ENCABEZADO ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Estadísticas y Finanzas',
+                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Color(0xff362419), letterSpacing: -0.5),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Resumen operativo y cuentas por pagar',
+                              style: TextStyle(color: Color(0xff55453A), fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => _generarYMostrarPDF(
+                            rango: _rangoSeleccionado,
+                            totalIngresos: totalIngresos,
+                            gananciaNeta: gananciaNeta,
+                            totalVentas: totalVentas,
+                            cuentasPorPagar: cuentasPorPagar,
+                            top5: top5,
+                          ),
+                          icon: const Icon(Icons.print_rounded, size: 18),
+                          label: const Text('Exportar PDF'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xff362419),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 24),
 
-                          pagosPendientes.add({
-                            'proveedor': proveedor,
-                            'monto': monto,
-                            'fecha': fecha,
-                            'fechaStr': fechaStr,
-                          });
+                    // --- FILTROS DE TIEMPO ---
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _rangos.map((rango) {
+                          final isSelected = _rangoSeleccionado == rango;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 12.0),
+                            child: ChoiceChip(
+                              label: Text(rango),
+                              selected: isSelected,
+                              showCheckmark: false,
+                              selectedColor: const Color(0xff362419),
+                              backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(color: isSelected ? const Color(0xff362419) : Colors.grey.shade300),
+                              ),
+                              labelStyle: TextStyle(
+                                color: isSelected ? Colors.white : const Color(0xff55453A),
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (selected) {
+                                if (selected) setState(() => _rangoSeleccionado = rango);
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
-                          if (fecha != null && fecha.isAfter(ahora)) {
-                            if (fechaMasProxima == null || fecha.isBefore(fechaMasProxima)) {
-                              fechaMasProxima = fecha;
-                              nombreProximoProveedor = proveedor;
-                              fechaProximoPagoStr = fechaStr;
-                            }
-                          }
-                        }
-                      }
-
-                      // Ordenar la lista de pendientes por la fecha de vencimiento más cercana
-                      pagosPendientes.sort((a, b) {
-                        if (a['fecha'] == null) return 1;
-                        if (b['fecha'] == null) return -1;
-                        return (a['fecha'] as DateTime).compareTo(b['fecha'] as DateTime);
-                      });
-
-                      double gananciaNeta = totalIngresos - totalGastosPagados;
-
-                      // 3. LOGICA DE RANKINGS
-                      var productosOrdenados = conteoProductos.entries.toList()
-                        ..sort((a, b) => b.value.compareTo(a.value));
-
-                      var top5 = productosOrdenados.take(5).toList();
-                      
-                      var bottom5 = productosOrdenados.length > 5 
-                          ? productosOrdenados.skip(5).toList().reversed.take(5).toList() 
-                          : <MapEntry<String, int>>[];
-
-                      return SingleChildScrollView(
+                    // --- CUERPO DE DATOS ---
+                    Expanded(
+                      child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // --- TARJETAS PRINCIPALES ---
                             Wrap(
                               spacing: 16,
                               runSpacing: 16,
@@ -235,7 +206,6 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                             ),
                             const SizedBox(height: 32),
 
-                            // --- PROVEEDORES (TARJETAS BOTÓN) ---
                             Row(
                               children: const [
                                 Text('Cuentas por Pagar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
@@ -249,36 +219,25 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                               runSpacing: 16,
                               children: [
                                 _buildInsightCard(
-                                  icon: Icons.money_off_rounded, 
-                                  title: 'Deuda Acumulada', 
-                                  value: '\$${cuentasPorPagar.toStringAsFixed(2)}', 
-                                  subtitle: 'Total pendiente', 
+                                  icon: Icons.money_off_rounded,
+                                  title: 'Deuda Acumulada',
+                                  value: '\$${cuentasPorPagar.toStringAsFixed(2)}',
+                                  subtitle: 'Total pendiente',
                                   color: Colors.redAccent,
-                                  onTap: () => _mostrarModalPagosPendientes(
-                                    context: context,
-                                    pagosPendientes: pagosPendientes,
-                                    proximaFecha: fechaProximoPagoStr,
-                                    totalDeuda: cuentasPorPagar,
-                                  ),
+                                  onTap: () => _mostrarModalPagosPendientes(context: context, pagosPendientes: pagosPendientes, proximaFecha: fechaProximoPagoStr, totalDeuda: cuentasPorPagar),
                                 ),
                                 _buildInsightCard(
-                                  icon: Icons.local_shipping_rounded, 
-                                  title: 'Próximo Pago', 
-                                  value: nombreProximoProveedor, 
-                                  subtitle: 'Vence: $fechaProximoPagoStr', 
+                                  icon: Icons.local_shipping_rounded,
+                                  title: 'Próximo Pago',
+                                  value: nombreProximoProveedor,
+                                  subtitle: 'Vence: $fechaProximoPagoStr',
                                   color: Colors.deepPurple,
-                                  onTap: () => _mostrarModalPagosPendientes(
-                                    context: context,
-                                    pagosPendientes: pagosPendientes,
-                                    proximaFecha: fechaProximoPagoStr,
-                                    totalDeuda: cuentasPorPagar,
-                                  ),
+                                  onTap: () => _mostrarModalPagosPendientes(context: context, pagosPendientes: pagosPendientes, proximaFecha: fechaProximoPagoStr, totalDeuda: cuentasPorPagar),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 32),
 
-                            // --- GRÁFICA DE BARRAS MODERNIZADA ---
                             const Text('Ingresos por Día', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
                             const SizedBox(height: 16),
                             Container(
@@ -287,15 +246,12 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
-                                ],
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
                               ),
                               child: _buildModernBarChart(ingresosPorDia),
                             ),
                             const SizedBox(height: 32),
 
-                            // --- RANKINGS ---
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -307,18 +263,326 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                             const SizedBox(height: 40),
                           ],
                         ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
         ),
       ),
     );
   }
 
+  // --- NUEVA FUNCIONALIDAD: GENERAR Y MOSTRAR PDF ---
+  Future<void> _generarYMostrarPDF({
+    required String rango,
+    required double totalIngresos,
+    required double gananciaNeta,
+    required int totalVentas,
+    required double cuentasPorPagar,
+    required List<MapEntry<String, int>> top5,
+  }) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Header(
+                level: 0,
+                child: pw.Text('Reporte Financiero', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+              ),
+              pw.Text('Filtro aplicado: $rango', style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
+              pw.SizedBox(height: 24),
+              
+              pw.Text('Resumen General', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Divider(),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Ingresos Brutos:'),
+                  pw.Text('\$${totalIngresos.toStringAsFixed(2)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                ]
+              ),
+              pw.SizedBox(height: 8),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Ganancia Neta:'),
+                  pw.Text('\$${gananciaNeta.toStringAsFixed(2)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                ]
+              ),
+              pw.SizedBox(height: 8),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Total de Ventas Realizadas:'),
+                  pw.Text('$totalVentas', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                ]
+              ),
+              pw.SizedBox(height: 8),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Cuentas por Pagar (Deuda):'),
+                  pw.Text('\$${cuentasPorPagar.toStringAsFixed(2)}', style: pw.TextStyle(color: PdfColors.red800, fontWeight: pw.FontWeight.bold)),
+                ]
+              ),
+              pw.SizedBox(height: 32),
+
+              pw.Text('Top 5 Productos Más Vendidos', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Divider(),
+              ...top5.map((producto) => pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(producto.key),
+                    pw.Text('${producto.value} unds.', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+              )),
+              
+              pw.Spacer(),
+              pw.Center(
+                child: pw.Text('Reporte generado automáticamente el ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey500))
+              )
+            ],
+          );
+        },
+      ),
+    );
+
+    // Esto abrirá el cuadro de diálogo nativo para previsualizar, imprimir o guardar el PDF
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'Reporte_Financiero_$rango.pdf',
+    );
+  }
+
+  // --- GRÁFICA DE BARRAS MODERNIZADA ---
+  Widget _buildModernBarChart(Map<int, double> ingresosPorDia) {
+    double maxY = ingresosPorDia.values.isEmpty ? 1 : ingresosPorDia.values.reduce((a, b) => a > b ? a : b);
+    if (maxY == 0) maxY = 100;
+    double chartMaxY = maxY * 1.2;
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: chartMaxY,
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            tooltipBgColor: const Color(0xff362419),
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                '\$${rod.toY.toStringAsFixed(0)}',
+                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              getTitlesWidget: (double value, TitleMeta meta) {
+                const style = TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 12);
+                String text = '';
+                switch (value.toInt()) {
+                  case 1: text = 'Lun'; break;
+                  case 2: text = 'Mar'; break;
+                  case 3: text = 'Mié'; break;
+                  case 4: text = 'Jue'; break;
+                  case 5: text = 'Vie'; break;
+                  case 6: text = 'Sáb'; break;
+                  case 7: text = 'Dom'; break;
+                }
+                return SideTitleWidget(axisSide: meta.axisSide, space: 8, child: Text(text, style: style));
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 45,
+              getTitlesWidget: (value, meta) {
+                if (value == 0 || value == chartMaxY) return const SizedBox.shrink();
+                return Text('\$${value.toInt()}', style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w500));
+              },
+            ),
+          ),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade200, strokeWidth: 1, dashArray: [5, 5]),
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: ingresosPorDia.entries.map((entry) {
+          return BarChartGroupData(
+            x: entry.key,
+            barRods: [
+              BarChartRodData(
+                toY: entry.value,
+                width: 26, // Barras ligeramente más anchas para un look moderno
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xff362419), // Color base
+                    Color(0xff755845), // Tono más claro para el degradado
+                  ],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)), // Base plana, borde superior curvo
+                backDrawRodData: BackgroundBarChartRodData(
+                  show: true,
+                  toY: chartMaxY,
+                  color: Colors.grey.shade100, // Track de fondo más limpio
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // EL RESTO DE TUS MÉTODOS SE MANTIENEN IGUAL...
+  bool _entraEnFiltro(DateTime fecha, DateTime ahora) {
+    if (_rangoSeleccionado == 'Hoy') {
+      return fecha.day == ahora.day && fecha.month == ahora.month && fecha.year == ahora.year;
+    } else if (_rangoSeleccionado == 'Esta Semana') {
+      return ahora.difference(fecha).inDays <= 7;
+    } else if (_rangoSeleccionado == 'Este Mes') {
+      return fecha.month == ahora.month && fecha.year == ahora.year;
+    }
+    return true;
+  }
+
+  Widget _buildStatCard(IconData icon, String value, String title, Color color) {
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xff362419), letterSpacing: -0.5)),
+                const SizedBox(height: 4),
+                Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightCard({required IconData icon, required String title, required String value, required String subtitle, required Color color, VoidCallback? onTap}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          width: 220,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, color: color, size: 20),
+                      const SizedBox(width: 8),
+                      Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 13)),
+                    ],
+                  ),
+                  Icon(Icons.arrow_forward_ios_rounded, size: 12, color: color.withValues(alpha: 0.6)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRankingList(String titulo, List<MapEntry<String, int>> datos, Color iconoColor) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(titulo, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xff362419))),
+          const SizedBox(height: 16),
+          if (datos.isEmpty) 
+            Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: Text('No hay datos suficientes', style: TextStyle(color: Colors.grey.shade500, fontStyle: FontStyle.italic))),
+          ...datos.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: iconoColor)),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                      ],
+                    ),
+                  ),
+                  Text('${entry.value} un.', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xff55453A))),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+  
   // VENTANA MODAL CENTRADA PARA PAGOS A PROVEEDORES
   void _mostrarModalPagosPendientes({
     required BuildContext context,
@@ -527,245 +791,6 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
           ),
         );
       },
-    );
-  }
-
-  bool _entraEnFiltro(DateTime fecha, DateTime ahora) {
-    if (_rangoSeleccionado == 'Hoy') {
-      return fecha.day == ahora.day && fecha.month == ahora.month && fecha.year == ahora.year;
-    } else if (_rangoSeleccionado == 'Esta Semana') {
-      return ahora.difference(fecha).inDays <= 7;
-    } else if (_rangoSeleccionado == 'Este Mes') {
-      return fecha.month == ahora.month && fecha.year == ahora.year;
-    }
-    return true;
-  }
-
-  // TARJETA DE ESTADÍSTICAS MODERNIZADA
-  Widget _buildStatCard(IconData icon, String value, String title, Color color) {
-    return Container(
-      width: 220,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value, 
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xff362419), letterSpacing: -0.5)
-                ),
-                const SizedBox(height: 4),
-                Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TARJETA DE INSIGHTS CONVERTIDA EN BOTÓN
-  Widget _buildInsightCard({
-    required IconData icon, 
-    required String title, 
-    required String value, 
-    required String subtitle, 
-    required Color color,
-    VoidCallback? onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Ink(
-          width: 220,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
-            boxShadow: [
-              BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(icon, color: color, size: 20),
-                      const SizedBox(width: 8),
-                      Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 13)),
-                    ],
-                  ),
-                  Icon(Icons.arrow_forward_ios_rounded, size: 12, color: color.withValues(alpha: 0.6)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 4),
-              Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // GRÁFICA DE BARRAS MODERNIZADA
-  Widget _buildModernBarChart(Map<int, double> ingresosPorDia) {
-    double maxY = ingresosPorDia.values.isEmpty ? 1 : ingresosPorDia.values.reduce((a, b) => a > b ? a : b);
-    if (maxY == 0) maxY = 100;
-    double chartMaxY = maxY * 1.2;
-
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: chartMaxY,
-        barTouchData: BarTouchData(
-          enabled: true,
-          touchTooltipData: BarTouchTooltipData(
-            tooltipBgColor: const Color(0xff362419),
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              return BarTooltipItem(
-                '\$${rod.toY.toStringAsFixed(0)}',
-                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              );
-            },
-          ),
-        ),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 30,
-              getTitlesWidget: (double value, TitleMeta meta) {
-                const style = TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 12);
-                String text = '';
-                switch (value.toInt()) {
-                  case 1: text = 'Lun'; break;
-                  case 2: text = 'Mar'; break;
-                  case 3: text = 'Mié'; break;
-                  case 4: text = 'Jue'; break;
-                  case 5: text = 'Vie'; break;
-                  case 6: text = 'Sáb'; break;
-                  case 7: text = 'Dom'; break;
-                }
-                return SideTitleWidget(axisSide: meta.axisSide, space: 8, child: Text(text, style: style));
-              },
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 45,
-              getTitlesWidget: (value, meta) {
-                if (value == 0 || value == chartMaxY) return const SizedBox.shrink();
-                return Text('\$${value.toInt()}', style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w500));
-              },
-            ),
-          ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade200, strokeWidth: 1, dashArray: [5, 5]),
-        ),
-        borderData: FlBorderData(show: false),
-        barGroups: ingresosPorDia.entries.map((entry) {
-          return BarChartGroupData(
-            x: entry.key,
-            barRods: [
-              BarChartRodData(
-                toY: entry.value,
-                color: const Color(0xff362419),
-                width: 22,
-                borderRadius: BorderRadius.circular(6),
-                backDrawRodData: BackgroundBarChartRodData(
-                  show: true,
-                  toY: chartMaxY,
-                  color: Colors.grey.shade100,
-                ),
-              ),
-            ],
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  // RANKING LIST MODERNIZADA
-  Widget _buildRankingList(String titulo, List<MapEntry<String, int>> datos, Color iconoColor) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(titulo, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xff362419))),
-          const SizedBox(height: 16),
-          if (datos.isEmpty) 
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Text('No hay datos suficientes', style: TextStyle(color: Colors.grey.shade500, fontStyle: FontStyle.italic)),
-            ),
-          ...datos.map((entry) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: iconoColor),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
-                      ],
-                    ),
-                  ),
-                  Text('${entry.value} un.', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xff55453A))),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
     );
   }
 }
