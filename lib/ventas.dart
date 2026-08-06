@@ -2,6 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+// ============================================================================
+// MODELO DE DATOS PARA EL CARRITO
+// ============================================================================
+class ItemCarrito {
+  final String id;
+  final String nombre;
+  final double precio;
+  int cantidad;
+  final int stockMaximo;
+  final String? urlImagen;
+
+  ItemCarrito({
+    required this.id,
+    required this.nombre,
+    required this.precio,
+    required this.cantidad,
+    required this.stockMaximo,
+    this.urlImagen,
+  });
+
+  double get subtotal => precio * cantidad;
+}
+
+// ============================================================================
+// PÁGINA PRINCIPAL DE VENTAS
+// ============================================================================
 class VentasPage extends StatefulWidget {
   const VentasPage({super.key});
 
@@ -13,19 +39,26 @@ class _VentasPageState extends State<VentasPage> {
   final CollectionReference _productosRef = FirebaseFirestore.instance.collection('productos');
   final CollectionReference _ventasRef = FirebaseFirestore.instance.collection('ventas');
 
-  final List<Map<String, dynamic>> _carrito = [];
+  final List<ItemCarrito> _carrito = [];
   String? _metodoPago;
   final TextEditingController _efectivoController = TextEditingController();
 
-  double get _totalVenta {
-    return _carrito.fold(0, (total, item) => total + ((item['precio'] as num).toDouble() * (item['cantidad'] as int)));
-  }
+  double get _totalVenta => _carrito.fold(0.0, (total, item) => total + item.subtotal);
+
+  final Map<String, String> _imagenesPorDefecto = {
+    'Miau Latte': 'https://i.postimg.cc/VvGcnz49/Whats-App-Image-2026-07-15-at-5-44-43-PM.jpg',
+    'Capuchino Bigotes': 'https://i.postimg.cc/qqbdypQP/Whats-App-Image-2026-07-15-at-5-44-44-PM.jpg',
+    'Cold Brew Nocturno': 'https://i.postimg.cc/YqYtdDMs/coldbrew.jpg',
+    'Purr Croissant': 'https://i.postimg.cc/4dDrtZK2/croissant.jpg',
+    'Michi-Muffin': 'https://i.postimg.cc/Hxqf5HJB/muffin.jpg',
+  };
 
   void _agregarAlCarrito(DocumentSnapshot producto) {
     final data = producto.data() as Map<String, dynamic>;
-    final int stockDisponible = int.tryParse((data['cantidad'] ?? 0).toString()) ?? 0;
+    final int stockDisponible = (data['cantidad'] as num?)?.toInt() ?? 0;
 
     if (stockDisponible <= 0) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Producto sin stock'), backgroundColor: Colors.red),
       );
@@ -33,27 +66,40 @@ class _VentasPageState extends State<VentasPage> {
     }
 
     setState(() {
-      final index = _carrito.indexWhere((item) => item['id'] == producto.id);
+      final index = _carrito.indexWhere((item) => item.id == producto.id);
       if (index != -1) {
-        final cantidadActual = _carrito[index]['cantidad'] as int;
-        if (cantidadActual < stockDisponible) {
-          _carrito[index]['cantidad'] = cantidadActual + 1;
+        if (_carrito[index].cantidad < stockDisponible) {
+          _carrito[index].cantidad++;
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Stock máximo alcanzado'), backgroundColor: Colors.orange),
+            );
+          }
         }
       } else {
-        _carrito.add({
-          'id': producto.id,
-          'nombre': data['nombre'] ?? 'Sin nombre',
-          'precio': double.tryParse((data['precio'] ?? 0).toString()) ?? 0.0,
-          'cantidad': 1,
-          'stockMaximo': stockDisponible,
-        });
+        String urlImg = (data['url_imagen'] as String?)?.trim() ?? '';
+        final String nombre = (data['nombre'] as String?) ?? 'Sin nombre';
+        
+        if (urlImg.isEmpty && _imagenesPorDefecto.containsKey(nombre)) {
+          urlImg = _imagenesPorDefecto[nombre]!;
+        }
+
+        _carrito.add(ItemCarrito(
+          id: producto.id,
+          nombre: nombre,
+          precio: (data['precio'] as num?)?.toDouble() ?? 0.0,
+          cantidad: 1,
+          stockMaximo: stockDisponible,
+          urlImagen: urlImg,
+        ));
       }
     });
   }
 
   void _eliminarDelCarrito(String id) {
     setState(() {
-      _carrito.removeWhere((item) => item['id'] == id);
+      _carrito.removeWhere((item) => item.id == id);
     });
   }
 
@@ -63,92 +109,73 @@ class _VentasPageState extends State<VentasPage> {
       return;
     }
     setState(() {
-      final index = _carrito.indexWhere((item) => item['id'] == id);
-      if (index != -1) {
-        final item = _carrito[index];
-        final stockMax = item['stockMaximo'] as int;
-        if (nuevaCantidad <= stockMax) {
-          item['cantidad'] = nuevaCantidad;
-        }
+      final index = _carrito.indexWhere((item) => item.id == id);
+      if (index != -1 && nuevaCantidad <= _carrito[index].stockMaximo) {
+        _carrito[index].cantidad = nuevaCantidad;
       }
     });
   }
 
   Future<void> _procesarVenta() async {
     if (_carrito.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Agrega productos al carrito'), backgroundColor: Colors.orange),
       );
       return;
     }
-
     if (_metodoPago == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Selecciona método de pago'), backgroundColor: Colors.orange),
       );
       return;
     }
 
+    if (!mounted) return;
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+
     try {
-      for (var item in _carrito) {
-        final productoRef = _productosRef.doc(item['id']);
-        final productoDoc = await productoRef.get();
-        final productoData = productoDoc.data() as Map<String, dynamic>;
-        final stockActual = int.tryParse((productoData['cantidad'] ?? 0).toString()) ?? 0;
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        for (var item in _carrito) {
+          final productoRef = _productosRef.doc(item.id);
+          final productoDoc = await transaction.get(productoRef);
+          
+          if (!productoDoc.exists) throw Exception('Producto ${item.nombre} ya no existe');
+          
+          final stockActual = ((productoDoc.data() as Map<String, dynamic>?)?['cantidad'] as num?)?.toInt() ?? 0;
+          if (stockActual < item.cantidad) {
+            throw Exception('Stock insuficiente para ${item.nombre}');
+          }
 
-        await productoRef.update({
-          'cantidad': stockActual - (item['cantidad'] as int),
+          transaction.update(productoRef, {
+            'cantidad': stockActual - item.cantidad,
+            'fecha_modificacion': FieldValue.serverTimestamp(),
+          });
+        }
+
+        final nuevaVentaRef = _ventasRef.doc();
+        transaction.set(nuevaVentaRef, {
+          'productos': _carrito.map((item) => {
+            'id': item.id,
+            'nombre': item.nombre,
+            'precio': item.precio,
+            'cantidad': item.cantidad,
+          }).toList(),
+          'total': _totalVenta,
+          'metodo_pago': _metodoPago,
+          'fecha': FieldValue.serverTimestamp(),
+          'usuario': FirebaseAuth.instance.currentUser?.email ?? 'desconocido',
         });
-      }
-
-      await _ventasRef.add({
-        'productos': _carrito.map((item) => {
-          'id': item['id'],
-          'nombre': item['nombre'],
-          'precio': item['precio'],
-          'cantidad': item['cantidad'],
-        }).toList(),
-        'total': _totalVenta,
-        'metodo_pago': _metodoPago,
-        'fecha': FieldValue.serverTimestamp(),
-        'usuario': FirebaseAuth.instance.currentUser?.email ?? 'desconocido',
       });
 
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('✅ Venta Exitosa', style: TextStyle(color: Color(0xff362419))),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Total: \$${_totalVenta.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                if (_metodoPago == 'efectivo') ...[
-                  const SizedBox(height: 8),
-                  Text('Efectivo: \$${double.parse(_efectivoController.text).toStringAsFixed(2)}'),
-                  Text('Cambio: \$${(double.parse(_efectivoController.text) - _totalVenta).toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  setState(() {
-                    _carrito.clear();
-                    _metodoPago = null;
-                    _efectivoController.clear();
-                  });
-                },
-                child: const Text('Aceptar'),
-              ),
-            ],
-          ),
-        );
+        Navigator.of(context).pop();
+        _mostrarExitoDialog();
       }
     } catch (e) {
       if (mounted) {
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
@@ -156,41 +183,88 @@ class _VentasPageState extends State<VentasPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Ventas 💰', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xff362419))),
-          const Text('Coffee Cat - Punto de venta', style: TextStyle(color: Color(0xff55453A), fontSize: 12)),
-          const SizedBox(height: 20),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth < 800) {
-                  return Column(
-                    children: [
-                      Expanded(child: _buildCatalogo()),
-                      const SizedBox(height: 16),
-                      SizedBox(height: 400, child: _buildCarrito()),
-                    ],
-                  );
-                } else {
-                  return Row(
-                    children: [
-                      Expanded(flex: 2, child: _buildCatalogo()),
-                      const SizedBox(width: 20),
-                      Expanded(flex: 1, child: _buildCarrito()),
-                    ],
-                  );
-                }
-              },
-            ),
+  void _mostrarExitoDialog() {
+    final efectivo = double.tryParse(_efectivoController.text) ?? 0.0;
+    final cambio = efectivo - _totalVenta;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Venta Exitosa', style: TextStyle(color: Color(0xff362419))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Total: \$${_totalVenta.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            if (_metodoPago == 'efectivo') ...[
+              const SizedBox(height: 8),
+              Text('Efectivo: \$${efectivo.toStringAsFixed(2)}'),
+              Text('Cambio: \$${cambio.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _carrito.clear();
+                _metodoPago = null;
+                _efectivoController.clear();
+              });
+            },
+            child: const Text('Aceptar', style: TextStyle(color: Color(0xff362419), fontWeight: FontWeight.bold)),
           ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, outerConstraints) {
+        final bool isMobile = outerConstraints.maxWidth < 800;
+
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Ventas 💰', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+              const Text('Coffee Cat - Punto de venta', style: TextStyle(color: Color(0xff55453A), fontSize: 12)),
+              const SizedBox(height: 20),
+              Expanded(
+                child: isMobile
+                    ? SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            SizedBox(height: 400, child: _buildCatalogo()),
+                            const SizedBox(height: 16),
+                            SizedBox(height: 400, child: _buildCarrito()),
+                          ],
+                        ),
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 2, child: _buildCatalogo()),
+                          const SizedBox(width: 20),
+                          Expanded(flex: 1, child: _buildCarrito()),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -210,7 +284,9 @@ class _VentasPageState extends State<VentasPage> {
                 stream: _productosRef.orderBy('nombre').snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
-                  if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(color: Color(0xff362419)));
+                  }
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return const Center(child: Text('No hay productos', style: TextStyle(color: Color(0xff55453A))));
                   }
@@ -225,57 +301,18 @@ class _VentasPageState extends State<VentasPage> {
                           crossAxisCount: crossAxisCount,
                           crossAxisSpacing: 10,
                           mainAxisSpacing: 10,
-                          childAspectRatio: 1.2,
+                          childAspectRatio: 0.9,
                         ),
                         itemCount: productos.length,
                         itemBuilder: (context, index) {
                           final producto = productos[index];
                           final data = producto.data() as Map<String, dynamic>;
-                          final String nombre = (data['nombre'] ?? 'Sin nombre').toString();
-                          final double precio = double.tryParse((data['precio'] ?? 0).toString()) ?? 0.0;
-                          final int cantidad = int.tryParse((data['cantidad'] ?? 0).toString()) ?? 0;
-
-                          return Card(
-                            color: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            elevation: 1,
-                            child: InkWell(
-                              onTap: cantidad > 0 ? () => _agregarAlCarrito(producto) : null,
-                              borderRadius: BorderRadius.circular(8),
-                              child: Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xffE5E5E3),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Center(child: Icon(Icons.local_cafe, size: 30, color: const Color(0xff55453A))),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xff362419)), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text('\$${precio.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xff362419))),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: cantidad > 0 ? Colors.green[100] : Colors.red[100],
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text('$cantidad disp.', style: TextStyle(fontSize: 10, color: cantidad > 0 ? Colors.green[800] : Colors.red[800], fontWeight: FontWeight.bold)),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          
+                          return _ProductoCard(
+                            producto: producto,
+                            data: data,
+                            imagenesPorDefecto: _imagenesPorDefecto,
+                            onTap: () => _agregarAlCarrito(producto),
                           );
                         },
                       );
@@ -311,17 +348,46 @@ class _VentasPageState extends State<VentasPage> {
                     final item = _carrito[index];
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 4),
+                      elevation: 0,
+                      color: Colors.grey[100],
                       child: ListTile(
                         dense: true,
-                        title: Text(item['nombre'].toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        subtitle: Text('\$${(item['precio'] as num).toStringAsFixed(2)} c/u', style: const TextStyle(fontSize: 11)),
+                        leading: item.urlImagen != null && item.urlImagen!.isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: Image.network(
+                                  item.urlImagen!,
+                                  width: 40,
+                                  height: 40,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => const Icon(Icons.local_cafe, size: 24),
+                                ),
+                              )
+                            : const Icon(Icons.local_cafe, size: 24),
+                        title: Text(item.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        subtitle: Text('\$${item.precio.toStringAsFixed(2)} c/u'),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(icon: const Icon(Icons.remove, size: 18), onPressed: () => _actualizarCantidad(item['id'].toString(), (item['cantidad'] as int) - 1)),
-                            Text('${item['cantidad']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            IconButton(icon: const Icon(Icons.add, size: 18), onPressed: () => _actualizarCantidad(item['id'].toString(), (item['cantidad'] as int) + 1)),
-                            IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 18), onPressed: () => _eliminarDelCarrito(item['id'].toString())),
+                            IconButton(
+                              icon: const Icon(Icons.remove, size: 18), 
+                              onPressed: () => _actualizarCantidad(item.id, item.cantidad - 1),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                            SizedBox(width: 20, child: Text('${item.cantidad}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                            IconButton(
+                              icon: const Icon(Icons.add, size: 18), 
+                              onPressed: () => _actualizarCantidad(item.id, item.cantidad + 1),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red, size: 18), 
+                              onPressed: () => _eliminarDelCarrito(item.id),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
                           ],
                         ),
                       ),
@@ -344,8 +410,20 @@ class _VentasPageState extends State<VentasPage> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                ChoiceChip(label: const Text('Efectivo', style: TextStyle(fontSize: 11)), selected: _metodoPago == 'efectivo', onSelected: (s) => setState(() => _metodoPago = s ? 'efectivo' : null), selectedColor: const Color(0xff362419)),
-                ChoiceChip(label: const Text('Tarjeta', style: TextStyle(fontSize: 11)), selected: _metodoPago == 'tarjeta', onSelected: (s) => setState(() => _metodoPago = s ? 'tarjeta' : null), selectedColor: const Color(0xff362419)),
+                ChoiceChip(
+                  label: const Text('Efectivo', style: TextStyle(fontSize: 11)),
+                  selected: _metodoPago == 'efectivo',
+                  onSelected: (s) => setState(() => _metodoPago = s ? 'efectivo' : null),
+                  selectedColor: const Color(0xff362419),
+                  labelStyle: TextStyle(color: _metodoPago == 'efectivo' ? Colors.white : Colors.black87),
+                ),
+                ChoiceChip(
+                  label: const Text('Tarjeta', style: TextStyle(fontSize: 11)),
+                  selected: _metodoPago == 'tarjeta',
+                  onSelected: (s) => setState(() => _metodoPago = s ? 'tarjeta' : null),
+                  selectedColor: const Color(0xff362419),
+                  labelStyle: TextStyle(color: _metodoPago == 'tarjeta' ? Colors.white : Colors.black87),
+                ),
               ],
             ),
             if (_metodoPago == 'efectivo') ...[
@@ -353,7 +431,12 @@ class _VentasPageState extends State<VentasPage> {
               TextField(
                 controller: _efectivoController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Efectivo recibido', prefixText: '\$ ', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                decoration: const InputDecoration(
+                  labelText: 'Efectivo recibido', 
+                  prefixText: '\$ ', 
+                  border: OutlineInputBorder(), 
+                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)
+                ),
               ),
             ],
             const SizedBox(height: 12),
@@ -361,7 +444,11 @@ class _VentasPageState extends State<VentasPage> {
               width: double.infinity,
               height: 44,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xff362419), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xff362419), 
+                  foregroundColor: Colors.white, 
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                ),
                 onPressed: _carrito.isEmpty ? null : _procesarVenta,
                 child: const Text('PROCESAR VENTA', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               ),
@@ -376,5 +463,124 @@ class _VentasPageState extends State<VentasPage> {
   void dispose() {
     _efectivoController.dispose();
     super.dispose();
+  }
+}
+
+// ============================================================================
+// WIDGET SEPARADO PARA EL PRODUCTO
+// ============================================================================
+class _ProductoCard extends StatelessWidget {
+  final DocumentSnapshot producto;
+  final Map<String, dynamic> data;
+  final Map<String, String> imagenesPorDefecto;
+  final VoidCallback onTap;
+
+  const _ProductoCard({
+    required this.producto,
+    required this.data,
+    required this.imagenesPorDefecto,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final String nombre = (data['nombre'] as String?) ?? 'Sin nombre';
+    final double precio = (data['precio'] as num?)?.toDouble() ?? 0.0;
+    final int cantidad = (data['cantidad'] as num?)?.toInt() ?? 0;
+    final String categoria = (data['categoria'] as String?) ?? 'Bebidas Calientes';
+
+    String urlImagen = (data['url_imagen'] as String?)?.trim() ?? '';
+    if (urlImagen.isEmpty && imagenesPorDefecto.containsKey(nombre)) {
+      urlImagen = imagenesPorDefecto[nombre]!;
+    }
+
+    final bool tieneStock = cantidad > 0;
+
+    return Card(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      elevation: 1,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: tieneStock ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(color: const Color(0xffE5E5E3)),
+                    if (urlImagen.isNotEmpty)
+                      Image.network(
+                        urlImagen,
+                        fit: BoxFit.cover,
+                        cacheWidth: 150,
+                        cacheHeight: 150,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xff362419)));
+                        },
+                        errorBuilder: (context, error, stackTrace) => 
+                            const Center(child: Icon(Icons.local_cafe, size: 30, color: Color(0xff55453A))),
+                      )
+                    else
+                      const Center(child: Icon(Icons.local_cafe, size: 30, color: Color(0xff55453A))),
+                    
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: const BoxDecoration(
+                          color: Color(0xff362419),
+                          borderRadius: BorderRadius.all(Radius.circular(6)),
+                        ),
+                        child: Text(categoria, style: const TextStyle(color: Colors.white, fontSize: 8)),
+                      ),
+                    ),
+                    if (!tieneStock)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red[800],
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('Agotado', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xff362419)), maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('\$${precio.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xff362419))),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: tieneStock ? Colors.green[100] : Colors.red[100],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      tieneStock ? '$cantidad disp.' : '0 disp.', 
+                      style: TextStyle(fontSize: 10, color: tieneStock ? Colors.green[800] : Colors.red[800], fontWeight: FontWeight.bold)
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

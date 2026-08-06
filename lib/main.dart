@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'welcome.dart'; // ← CAMBIO 1: Importamos la nueva pantalla de bienvenida
+import 'app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await Firebase.initializeApp(
     options: const FirebaseOptions(
       apiKey: 'AIzaSyBGPH0Q0L2rUgTKGoAkHXkMIOhZ7VVdibs',
@@ -24,13 +24,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Coffee Cat',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.brown, // Tema consistente con tu marca
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xff362419),
+          primary: const Color(0xff362419),
+          surface: const Color(0xffF5F0EB),
+        ),
+        scaffoldBackgroundColor: const Color(0xffF5F0EB),
+        fontFamily: 'Roboto',
       ),
-      home: const WelcomeScreen(), // ← CAMBIO 2: La app ahora inicia aquí
+      routerConfig: appRouter,
     );
   }
 }

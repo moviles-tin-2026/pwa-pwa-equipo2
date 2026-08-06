@@ -1,27 +1,13 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../services/auth_service.dart';
+import '../utils/optimized_image.dart';
 
 class SimpleSidebar extends StatefulWidget {
-  final String currentPage;
-  final VoidCallback onDashboardTap;
-  final VoidCallback onInventarioTap;
-  final VoidCallback onVentasTap;
-  final VoidCallback onEstadisticasTap;
-  final VoidCallback onEmpleadosTap;
-  final VoidCallback onConfiguracionTap;
-  final VoidCallback onLogoutTap;
   final bool isMobile;
 
   const SimpleSidebar({
     super.key,
-    required this.currentPage,
-    required this.onDashboardTap,
-    required this.onInventarioTap,
-    required this.onVentasTap,
-    required this.onEstadisticasTap,
-    required this.onEmpleadosTap,
-    required this.onConfiguracionTap,
-    required this.onLogoutTap,
     this.isMobile = false,
   });
 
@@ -72,10 +58,11 @@ class _SimpleSidebarState extends State<SimpleSidebar> {
         child: _isExpanded
             ? Row(
                 children: [
-                  Image.asset(
-                    'assets/logo1.png',
+                  OptimizedAssetImage(
+                    asset: 'assets/logo1.webp',
                     width: 32,
                     height: 32,
+                    fit: BoxFit.contain,
                     errorBuilder: (c, e, s) =>
                         const Icon(Icons.pets, color: Colors.white, size: 32),
                   ),
@@ -119,13 +106,15 @@ class _SimpleSidebarState extends State<SimpleSidebar> {
         child: Column(
           children: [
             Padding(
+              // 💡 CORREGIDO: Se eliminó la propiedad duplicada 'paddingHorizontal'
               padding: const EdgeInsets.all(18),
               child: Row(
                 children: [
-                  Image.asset(
-                    'assets/logo1.png',
+                  OptimizedAssetImage(
+                    asset: 'assets/logo1.png',
                     width: 40,
                     height: 40,
+                    fit: BoxFit.contain,
                     errorBuilder: (c, e, s) =>
                         const Icon(Icons.pets, color: Colors.white, size: 40),
                   ),
@@ -188,7 +177,6 @@ class _SimpleSidebarState extends State<SimpleSidebar> {
       );
     }
 
-    // Modo Desktop / Web totalmente aislado para prevenir overflow
     return Container(
       height: 44,
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -233,40 +221,45 @@ class _SimpleSidebarState extends State<SimpleSidebar> {
 
   List<Widget> _menuItems({required bool isDrawer}) {
     final List<Widget> items = [];
+    final String currentRoute = GoRouterState.of(context).matchedLocation;
 
-    void add(IconData icon, String title, bool active, VoidCallback onTap,
-        {bool isLogout = false}) {
+    void add(IconData icon, String title, String routePath, {bool isLogout = false}) {
+      final bool isActive = routePath == '/'
+          ? currentRoute == '/'
+          : currentRoute.startsWith(routePath);
+
       items.add(_buildMenuItem(
         icon: icon,
         title: title,
-        active: active,
-        onTap: onTap,
+        active: isActive,
+        onTap: () => context.go(routePath),
         isDrawer: isDrawer,
         isLogout: isLogout,
       ));
     }
 
+    // 1. Dashboard (Solo Admin y Supervisor)
     if (_authService.esAdmin || _authService.esSupervisor) {
-      add(Icons.dashboard, 'Dashboard', widget.currentPage == 'dashboard', widget.onDashboardTap);
-    }
-    add(Icons.inventory_2, 'Inventario', widget.currentPage == 'inventario', widget.onInventarioTap);
-    add(Icons.point_of_sale, 'Ventas', widget.currentPage == 'ventas', widget.onVentasTap);
-    if (_authService.esSupervisor) {
-      add(Icons.analytics, 'Estadísticas', widget.currentPage == 'estadisticas',
-          widget.onEstadisticasTap);
-    }
-    if (_authService.esAdmin) {
-      add(Icons.people, 'Empleados', widget.currentPage == 'empleados', widget.onEmpleadosTap);
+      add(Icons.dashboard, 'Dashboard', '/');
     }
 
-    items.add(const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Divider(color: Colors.white24),
-    ));
+    // 2. Inventario y Ventas (Todos los roles)
+    add(Icons.inventory_2, 'Inventario', '/inventario');
+    add(Icons.point_of_sale, 'Ventas', '/ventas');
 
+    // 3. Estadísticas (Admin y Supervisor)
+    if (_authService.esAdmin || _authService.esSupervisor) {
+      add(Icons.analytics, 'Estadísticas', '/estadisticas');
+    }
+
+    // 4. Empleados y Configuración (Solo Admin)
     if (_authService.esAdmin) {
-      add(Icons.settings, 'Configuración', widget.currentPage == 'configuracion',
-          widget.onConfiguracionTap);
+      items.add(const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Divider(color: Colors.white24),
+      ));
+      add(Icons.people, 'Empleados', '/empleados');
+      add(Icons.settings, 'Configuración', '/configuracion');
     }
 
     return items;
@@ -277,7 +270,12 @@ class _SimpleSidebarState extends State<SimpleSidebar> {
       icon: Icons.logout,
       title: 'Cerrar Sesión',
       active: false,
-      onTap: widget.onLogoutTap,
+      onTap: () async {
+        await _authService.logout();
+        // 💡 CORREGIDO: Verificación limpia de context montado
+        if (!mounted) return;
+        context.go('/login');
+      },
       isDrawer: isDrawer,
       isLogout: true,
     );
