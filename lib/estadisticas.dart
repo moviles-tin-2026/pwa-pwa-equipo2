@@ -16,6 +16,10 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
   String _rangoSeleccionado = 'Histórico';
   final List<String> _rangos = ['Hoy', 'Esta Semana', 'Este Mes', 'Histórico'];
 
+  // --- NUEVO COLOR CAFÉ MÁS CLARO ---
+  final Color _cafePrincipal = const Color(0xFF543A2A); 
+  final Color _cafeSecundario = const Color(0xff55453A);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -112,7 +116,6 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                 var top5 = productosOrdenados.take(5).toList();
                 var bottom5 = productosOrdenados.length > 5 ? productosOrdenados.skip(5).toList().reversed.take(5).toList() : <MapEntry<String, int>>[];
 
-                // --- NUEVO: OBTENER LAS 5 VENTAS MÁS RECIENTES ---
                 var ventasRecientes = List.from(ventasFiltradas);
                 ventasRecientes.sort((a, b) {
                   final dataA = a.data() as Map<String, dynamic>;
@@ -132,15 +135,15 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text(
                               'Estadísticas y Finanzas',
-                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Color(0xff362419), letterSpacing: -0.5),
+                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _cafePrincipal, letterSpacing: -0.5),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
                               'Resumen operativo y cuentas por pagar',
-                              style: TextStyle(color: Color(0xff55453A), fontSize: 13, fontWeight: FontWeight.w500),
+                              style: TextStyle(color: _cafeSecundario, fontSize: 13, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -156,7 +159,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                           icon: const Icon(Icons.print_rounded, size: 18),
                           label: const Text('Exportar PDF'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xff362419),
+                            backgroundColor: _cafePrincipal,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -179,14 +182,14 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                               label: Text(rango),
                               selected: isSelected,
                               showCheckmark: false,
-                              selectedColor: const Color(0xff362419),
+                              selectedColor: _cafePrincipal,
                               backgroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                side: BorderSide(color: isSelected ? const Color(0xff362419) : Colors.grey.shade300),
+                                side: BorderSide(color: isSelected ? _cafePrincipal : Colors.grey.shade300),
                               ),
                               labelStyle: TextStyle(
-                                color: isSelected ? Colors.white : const Color(0xff55453A),
+                                color: isSelected ? Colors.white : _cafeSecundario,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
                               onSelected: (selected) {
@@ -217,10 +220,10 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                             const SizedBox(height: 32),
 
                             Row(
-                              children: const [
-                                Text('Cuentas por Pagar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
-                                SizedBox(width: 8),
-                                Text('(Haz clic para ver el desglose)', style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic)),
+                              children: [
+                                Text('Cuentas por Pagar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _cafePrincipal)),
+                                const SizedBox(width: 8),
+                                const Text('(Haz clic para ver el desglose)', style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic)),
                               ],
                             ),
                             const SizedBox(height: 16),
@@ -248,15 +251,17 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                             ),
                             const SizedBox(height: 32),
 
-                            const Text('Ingresos por Día', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+                            Text('Ingresos por Día', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _cafePrincipal)),
                             const SizedBox(height: 16),
+                            
+                            // --- CONTENEDOR DE LA GRÁFICA ---
                             Container(
                               height: 300,
                               padding: const EdgeInsets.only(top: 30, right: 20, left: 10, bottom: 10),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: _cafePrincipal, // Aplicamos el café más claro aquí
                                 borderRadius: BorderRadius.circular(20),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
                               ),
                               child: _buildModernBarChart(ingresosPorDia),
                             ),
@@ -271,9 +276,8 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                               ],
                             ),
                             
-                            // --- NUEVO: SECCIÓN DE ÚLTIMAS TRANSACCIONES ---
                             const SizedBox(height: 32),
-                            const Text('Últimas Transacciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+                            Text('Últimas Transacciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _cafePrincipal)),
                             const SizedBox(height: 16),
                             _buildUltimasTransacciones(ultimas5Ventas),
 
@@ -392,11 +396,11 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            getTooltipColor: (group) => const Color(0xff362419),
+            getTooltipColor: (group) => Colors.white,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
                 '\$${rod.toY.toStringAsFixed(0)}',
-                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                TextStyle(color: _cafePrincipal, fontWeight: FontWeight.bold),
               );
             },
           ),
@@ -408,7 +412,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
               showTitles: true,
               reservedSize: 30,
               getTitlesWidget: (double value, TitleMeta meta) {
-                const style = TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 12);
+                const style = TextStyle(color: Color(0xFFF4F6F8), fontWeight: FontWeight.w600, fontSize: 12);
                 String text = '';
                 switch (value.toInt()) {
                   case 1: text = 'Lun'; break;
@@ -429,7 +433,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
               reservedSize: 45,
               getTitlesWidget: (value, meta) {
                 if (value == 0 || value == chartMaxY) return const SizedBox.shrink();
-                return Text('\$${value.toInt()}', style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w500));
+                return Text('\$${value.toInt()}', style: const TextStyle(color: Color(0xFFF4F6F8), fontSize: 11, fontWeight: FontWeight.w500));
               },
             ),
           ),
@@ -439,7 +443,10 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade200, strokeWidth: 1, dashArray: [5, 5]),
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: Colors.white.withValues(alpha: 0.08), 
+            strokeWidth: 1, 
+          ),
         ),
         borderData: FlBorderData(show: false),
         barGroups: ingresosPorDia.entries.map((entry) {
@@ -451,8 +458,8 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                 width: 26, 
                 gradient: const LinearGradient(
                   colors: [
-                    Color(0xff362419), 
-                    Color(0xff755845), 
+                    Color(0xFFE8E0D5), 
+                    Colors.white, 
                   ],
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
@@ -461,7 +468,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                 backDrawRodData: BackgroundBarChartRodData(
                   show: true,
                   toY: chartMaxY,
-                  color: Colors.grey.shade100, 
+                  color: Colors.white.withValues(alpha: 0.12), 
                 ),
               ),
             ],
@@ -503,7 +510,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xff362419), letterSpacing: -0.5)),
+                Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: _cafePrincipal, letterSpacing: -0.5)),
                 const SizedBox(height: 4),
                 Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500)),
               ],
@@ -567,7 +574,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(titulo, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xff362419))),
+          Text(titulo, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: _cafePrincipal)),
           const SizedBox(height: 16),
           if (datos.isEmpty) 
             Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: Text('No hay datos suficientes', style: TextStyle(color: Colors.grey.shade500, fontStyle: FontStyle.italic))),
@@ -586,7 +593,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                       ],
                     ),
                   ),
-                  Text('${entry.value} un.', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xff55453A))),
+                  Text('${entry.value} un.', style: TextStyle(fontWeight: FontWeight.w800, color: _cafeSecundario)),
                 ],
               ),
             );
@@ -596,7 +603,6 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
     );
   }
 
-  // --- WIDGET DE ÚLTIMAS TRANSACCIONES ---
   Widget _buildUltimasTransacciones(List<dynamic> ventas) {
     if (ventas.isEmpty) {
       return Container(
@@ -647,7 +653,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Venta completada', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Color(0xff362419))),
+                      Text('Venta completada', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: _cafePrincipal)),
                       const SizedBox(height: 4),
                       Text('Hora: $horaStr', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                     ],
@@ -693,26 +699,26 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xff362419).withValues(alpha: 0.08),
+                            color: _cafePrincipal.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.receipt_long_rounded, color: Color(0xff362419), size: 24),
+                          child: Icon(Icons.receipt_long_rounded, color: _cafePrincipal, size: 24),
                         ),
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text(
                               'Pagos a Proveedores',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xff362419),
+                                color: _cafePrincipal,
                               ),
                             ),
                             Text(
                               'Cuentas por pagar pendientes de liquidación',
-                              style: TextStyle(fontSize: 12, color: Color(0xff55453A)),
+                              style: TextStyle(fontSize: 12, color: _cafeSecundario),
                             ),
                           ],
                         ),
@@ -755,7 +761,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                           const SizedBox(height: 4),
                           Text(
                             proximaFecha,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xff362419)),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _cafePrincipal),
                           ),
                         ],
                       ),
@@ -764,9 +770,9 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                 ),
                 const SizedBox(height: 20),
 
-                const Text(
+                Text(
                   'Detalle de Pagos Pendientes',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xff362419)),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _cafePrincipal),
                 ),
                 const SizedBox(height: 12),
 
@@ -810,10 +816,10 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                                       children: [
                                         Text(
                                           pago['proveedor'],
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
-                                            color: Color(0xff362419),
+                                            color: _cafePrincipal,
                                           ),
                                         ),
                                         const SizedBox(height: 6),
@@ -858,7 +864,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xff362419),
+                      foregroundColor: _cafePrincipal,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
                     child: const Text('Cerrar', style: TextStyle(fontWeight: FontWeight.bold)),
