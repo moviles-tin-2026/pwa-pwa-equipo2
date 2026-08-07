@@ -1,11 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
-// ============================================================================
-// PÁGINA DE ESTADÍSTICAS Y FINANZAS - OPTIMIZADA PARA PERFORMANCE
-// ============================================================================
 class EstadisticasPage extends StatefulWidget {
   const EstadisticasPage({super.key});
 
@@ -17,307 +16,370 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
   String _rangoSeleccionado = 'Histórico';
   final List<String> _rangos = ['Hoy', 'Esta Semana', 'Este Mes', 'Histórico'];
 
-  // ✅ OPTIMIZACIÓN: StreamSubscriptions en lugar de StreamBuilders anidados
-  StreamSubscription<QuerySnapshot>? _ventasSub;
-  StreamSubscription<QuerySnapshot>? _gastosSub;
-  
-  List<QueryDocumentSnapshot> _ventas = [];
-  List<QueryDocumentSnapshot> _gastos = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    
-    _ventasSub = FirebaseFirestore.instance
-        .collection('ventas')
-        .snapshots()
-        .listen((snapshot) {
-      if (mounted) {
-        setState(() {
-          _ventas = snapshot.docs;
-          _isLoading = false;
-        });
-      }
-    });
-
-    _gastosSub = FirebaseFirestore.instance
-        .collection('gastos')
-        .snapshots()
-        .listen((snapshot) {
-      if (mounted) {
-        setState(() {
-          _gastos = snapshot.docs;
-          _isLoading = false;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _ventasSub?.cancel();
-    _gastosSub?.cancel();
-    super.dispose();
-  }
-
-  bool _entraEnFiltro(DateTime fecha, DateTime ahora) {
-    if (_rangoSeleccionado == 'Hoy') {
-      return fecha.day == ahora.day && fecha.month == ahora.month && fecha.year == ahora.year;
-    } else if (_rangoSeleccionado == 'Esta Semana') {
-      return ahora.difference(fecha).inDays <= 7;
-    } else if (_rangoSeleccionado == 'Este Mes') {
-      return fecha.month == ahora.month && fecha.year == ahora.year;
-    }
-    return true;
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF4F6F8),
-        body: Center(child: CircularProgressIndicator(color: Color(0xff362419))),
-      );
-    }
-
-    final ahora = DateTime.now();
-
-    // ✅ OPTIMIZACIÓN: Cálculos sincrónicos desde datos en memoria
-    final ventasFiltradas = _ventas.where((venta) {
-      final data = venta.data() as Map<String, dynamic>;
-      if (!data.containsKey('fecha')) return true;
-      return _entraEnFiltro((data['fecha'] as Timestamp).toDate().toLocal(), ahora);
-    }).toList();
-
-    int totalVentas = ventasFiltradas.length;
-    double totalIngresos = 0;
-    Map<String, int> conteoProductos = {};
-    Map<int, double> ingresosPorDia = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
-
-    for (var venta in ventasFiltradas) {
-      final data = venta.data() as Map<String, dynamic>;
-      double ingresoVenta = (data['total'] ?? 0).toDouble();
-      totalIngresos += ingresoVenta;
-
-      if (data.containsKey('fecha')) {
-        DateTime fecha = (data['fecha'] as Timestamp).toDate().toLocal();
-        ingresosPorDia[fecha.weekday] = (ingresosPorDia[fecha.weekday] ?? 0) + ingresoVenta;
-      }
-
-      final productos = data['productos'] as List<dynamic>? ?? [];
-      for (var p in productos) {
-        String nombre = p['nombre'] ?? 'Desconocido';
-        int cantidad = (p['cantidad'] ?? 1) as int;
-        conteoProductos[nombre] = (conteoProductos[nombre] ?? 0) + cantidad;
-      }
-    }
-
-    double totalGastosPagados = 0;
-    double cuentasPorPagar = 0;
-    String nombreProximoProveedor = 'Ninguno';
-    String fechaProximoPagoStr = 'Al día';
-    DateTime? fechaMasProxima;
-    List<Map<String, dynamic>> pagosPendientes = [];
-
-    for (var gasto in _gastos) {
-      final data = gasto.data() as Map<String, dynamic>;
-      final monto = (data['monto'] ?? 0).toDouble();
-      final estado = data['estado'] ?? 'pendiente';
-      final fecha = data.containsKey('fecha') ? (data['fecha'] as Timestamp).toDate().toLocal() : null;
-      final proveedor = data['proveedor'] ?? 'Proveedor Desconocido';
-
-      if (estado == 'pagado' && fecha != null && _entraEnFiltro(fecha, ahora)) {
-        totalGastosPagados += monto;
-      }
-
-      if (estado == 'pendiente') {
-        cuentasPorPagar += monto;
-        String fechaStr = fecha != null
-            ? '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}'
-            : 'Sin fecha registrada';
-
-        pagosPendientes.add({'proveedor': proveedor, 'monto': monto, 'fecha': fecha, 'fechaStr': fechaStr});
-
-        if (fecha != null && (fechaMasProxima == null || fecha.isBefore(fechaMasProxima))) {
-          fechaMasProxima = fecha;
-          nombreProximoProveedor = proveedor;
-          fechaProximoPagoStr = fechaStr;
-        }
-      }
-    }
-
-    pagosPendientes.sort((a, b) {
-      if (a['fecha'] == null) return 1;
-      if (b['fecha'] == null) return -1;
-      return (a['fecha'] as DateTime).compareTo(b['fecha'] as DateTime);
-    });
-
-    double gananciaNeta = totalIngresos - totalGastosPagados;
-    var productosOrdenados = conteoProductos.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    var top5 = productosOrdenados.take(5).toList();
-    var bottom5 = productosOrdenados.length > 5 ? productosOrdenados.skip(5).toList().reversed.take(5).toList() : <MapEntry<String, int>>[];
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- ENCABEZADO ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Column(
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('ventas').snapshots(),
+          builder: (context, snapshotVentas) {
+            if (!snapshotVentas.hasData) return const Center(child: CircularProgressIndicator());
+
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('gastos').snapshots(),
+              builder: (context, snapshotGastos) {
+                if (!snapshotGastos.hasData) return const Center(child: CircularProgressIndicator());
+
+                final todasLasVentas = snapshotVentas.data!.docs;
+                final todosLosGastos = snapshotGastos.data!.docs;
+                final ahora = DateTime.now();
+
+                // 1. PROCESAR VENTAS
+                final ventasFiltradas = todasLasVentas.where((venta) {
+                  final data = venta.data() as Map<String, dynamic>;
+                  if (!data.containsKey('fecha')) return true;
+                  return _entraEnFiltro((data['fecha'] as Timestamp).toDate().toLocal(), ahora);
+                }).toList();
+
+                int totalVentas = ventasFiltradas.length;
+                double totalIngresos = 0;
+                Map<String, int> conteoProductos = {};
+                Map<int, double> ingresosPorDia = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
+
+                for (var venta in ventasFiltradas) {
+                  final data = venta.data() as Map<String, dynamic>;
+                  double ingresoVenta = (data['total'] ?? 0).toDouble();
+                  totalIngresos += ingresoVenta;
+
+                  if (data.containsKey('fecha')) {
+                    DateTime fecha = (data['fecha'] as Timestamp).toDate().toLocal();
+                    ingresosPorDia[fecha.weekday] = (ingresosPorDia[fecha.weekday] ?? 0) + ingresoVenta;
+                  }
+
+                  final productos = data['productos'] as List<dynamic>? ?? [];
+                  for (var p in productos) {
+                    String nombre = p['nombre'] ?? 'Desconocido';
+                    int cantidad = (p['cantidad'] ?? 1) as int;
+                    conteoProductos[nombre] = (conteoProductos[nombre] ?? 0) + cantidad;
+                  }
+                }
+
+                // 2. PROCESAR GASTOS Y PAGOS A PROVEEDORES
+                double totalGastosPagados = 0;
+                double cuentasPorPagar = 0;
+                String nombreProximoProveedor = 'Ninguno';
+                String fechaProximoPagoStr = 'Al día';
+                DateTime? fechaMasProxima;
+                List<Map<String, dynamic>> pagosPendientes = [];
+
+                for (var gasto in todosLosGastos) {
+                  final data = gasto.data() as Map<String, dynamic>;
+                  final monto = (data['monto'] ?? 0).toDouble();
+                  final estado = data['estado'] ?? 'pendiente';
+                  final fecha = data.containsKey('fecha') ? (data['fecha'] as Timestamp).toDate().toLocal() : null;
+                  final proveedor = data['proveedor'] ?? 'Proveedor Desconocido';
+
+                  if (estado == 'pagado' && fecha != null && _entraEnFiltro(fecha, ahora)) {
+                    totalGastosPagados += monto;
+                  }
+
+                  if (estado == 'pendiente') {
+                    cuentasPorPagar += monto;
+                    String fechaStr = fecha != null
+                        ? '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}'
+                        : 'Sin fecha registrada';
+
+                    pagosPendientes.add({'proveedor': proveedor, 'monto': monto, 'fecha': fecha, 'fechaStr': fechaStr});
+
+                    if (fecha != null && (fechaMasProxima == null || fecha.isBefore(fechaMasProxima))) {
+                      fechaMasProxima = fecha;
+                      nombreProximoProveedor = proveedor;
+                      fechaProximoPagoStr = fechaStr;
+                    }
+                  }
+                }
+
+                pagosPendientes.sort((a, b) {
+                  if (a['fecha'] == null) return 1;
+                  if (b['fecha'] == null) return -1;
+                  return (a['fecha'] as DateTime).compareTo(b['fecha'] as DateTime);
+                });
+
+                double gananciaNeta = totalIngresos - totalGastosPagados;
+                var productosOrdenados = conteoProductos.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+                var top5 = productosOrdenados.take(5).toList();
+                var bottom5 = productosOrdenados.length > 5 ? productosOrdenados.skip(5).toList().reversed.take(5).toList() : <MapEntry<String, int>>[];
+
+                // --- NUEVO: OBTENER LAS 5 VENTAS MÁS RECIENTES ---
+                var ventasRecientes = List.from(ventasFiltradas);
+                ventasRecientes.sort((a, b) {
+                  final dataA = a.data() as Map<String, dynamic>;
+                  final dataB = b.data() as Map<String, dynamic>;
+                  final fechaA = dataA.containsKey('fecha') ? (dataA['fecha'] as Timestamp).toDate() : DateTime.now();
+                  final fechaB = dataB.containsKey('fecha') ? (dataB['fecha'] as Timestamp).toDate() : DateTime.now();
+                  return fechaB.compareTo(fechaA); 
+                });
+                var ultimas5Ventas = ventasRecientes.take(5).toList();
+
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Estadísticas y Finanzas',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Color(0xff362419), letterSpacing: -0.5),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Resumen operativo y cuentas por pagar',
-                      style: TextStyle(color: Color(0xff55453A), fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Función de exportación disponible'), behavior: SnackBarBehavior.floating),
-                    );
-                  },
-                  icon: const Icon(Icons.print_rounded, size: 18),
-                  label: const Text('Exportar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xff362419),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                )
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // --- FILTROS DE TIEMPO ---
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _rangos.map((rango) {
-                  final isSelected = _rangoSeleccionado == rango;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 12.0),
-                    child: ChoiceChip(
-                      label: Text(rango),
-                      selected: isSelected,
-                      showCheckmark: false,
-                      selectedColor: const Color(0xff362419),
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        side: BorderSide(color: isSelected ? const Color(0xff362419) : Colors.grey.shade300),
-                      ),
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : const Color(0xff55453A),
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                      onSelected: (selected) {
-                        if (selected) setState(() => _rangoSeleccionado = rango);
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // --- CUERPO DE DATOS ---
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        _buildStatCard(Icons.attach_money_rounded, '\$${totalIngresos.toStringAsFixed(2)}', 'Ingresos Brutos', Colors.green),
-                        _buildStatCard(Icons.account_balance_wallet_rounded, '\$${gananciaNeta.toStringAsFixed(2)}', 'Ganancia Neta', gananciaNeta >= 0 ? Colors.blue : Colors.red),
-                        _buildStatCard(Icons.shopping_bag_rounded, '$totalVentas', 'Total Ventas', Colors.orange),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-
-                    const Row(
-                      children: [
-                        Text('Cuentas por Pagar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
-                        SizedBox(width: 8),
-                        Text('(Haz clic para ver el desglose)', style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic)),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        _buildInsightCard(
-                          icon: Icons.money_off_rounded,
-                          title: 'Deuda Acumulada',
-                          value: '\$${cuentasPorPagar.toStringAsFixed(2)}',
-                          subtitle: 'Total pendiente',
-                          color: Colors.redAccent,
-                          onTap: () => _mostrarModalPagosPendientes(context: context, pagosPendientes: pagosPendientes, proximaFecha: fechaProximoPagoStr, totalDeuda: cuentasPorPagar),
-                        ),
-                        _buildInsightCard(
-                          icon: Icons.local_shipping_rounded,
-                          title: 'Próximo Pago',
-                          value: nombreProximoProveedor,
-                          subtitle: 'Vence: $fechaProximoPagoStr',
-                          color: Colors.deepPurple,
-                          onTap: () => _mostrarModalPagosPendientes(context: context, pagosPendientes: pagosPendientes, proximaFecha: fechaProximoPagoStr, totalDeuda: cuentasPorPagar),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-
-                    const Text('Ingresos por Día', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
-                    const SizedBox(height: 16),
-                    Container(
-                      height: 300,
-                      padding: const EdgeInsets.only(top: 30, right: 20, left: 10, bottom: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
-                      ),
-                      child: _buildModernBarChart(ingresosPorDia),
-                    ),
-                    const SizedBox(height: 32),
-
+                    // --- ENCABEZADO ---
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(child: _buildRankingList('Más Vendidos', top5, Colors.amber)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildRankingList('Menos Vendidos', bottom5, Colors.redAccent)),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Estadísticas y Finanzas',
+                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Color(0xff362419), letterSpacing: -0.5),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Resumen operativo y cuentas por pagar',
+                              style: TextStyle(color: Color(0xff55453A), fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => _generarYMostrarPDF(
+                            rango: _rangoSeleccionado,
+                            totalIngresos: totalIngresos,
+                            gananciaNeta: gananciaNeta,
+                            totalVentas: totalVentas,
+                            cuentasPorPagar: cuentasPorPagar,
+                            top5: top5,
+                          ),
+                          icon: const Icon(Icons.print_rounded, size: 18),
+                          label: const Text('Exportar PDF'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xff362419),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        )
                       ],
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 24),
+
+                    // --- FILTROS DE TIEMPO ---
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _rangos.map((rango) {
+                          final isSelected = _rangoSeleccionado == rango;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 12.0),
+                            child: ChoiceChip(
+                              label: Text(rango),
+                              selected: isSelected,
+                              showCheckmark: false,
+                              selectedColor: const Color(0xff362419),
+                              backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(color: isSelected ? const Color(0xff362419) : Colors.grey.shade300),
+                              ),
+                              labelStyle: TextStyle(
+                                color: isSelected ? Colors.white : const Color(0xff55453A),
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (selected) {
+                                if (selected) setState(() => _rangoSeleccionado = rango);
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // --- CUERPO DE DATOS ---
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 16,
+                              runSpacing: 16,
+                              children: [
+                                _buildStatCard(Icons.attach_money_rounded, '\$${totalIngresos.toStringAsFixed(2)}', 'Ingresos Brutos', Colors.green),
+                                _buildStatCard(Icons.account_balance_wallet_rounded, '\$${gananciaNeta.toStringAsFixed(2)}', 'Ganancia Neta', gananciaNeta >= 0 ? Colors.blue : Colors.red),
+                                _buildStatCard(Icons.shopping_bag_rounded, '$totalVentas', 'Total Ventas', Colors.orange),
+                              ],
+                            ),
+                            const SizedBox(height: 32),
+
+                            Row(
+                              children: const [
+                                Text('Cuentas por Pagar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+                                SizedBox(width: 8),
+                                Text('(Haz clic para ver el desglose)', style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic)),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 16,
+                              runSpacing: 16,
+                              children: [
+                                _buildInsightCard(
+                                  icon: Icons.money_off_rounded,
+                                  title: 'Deuda Acumulada',
+                                  value: '\$${cuentasPorPagar.toStringAsFixed(2)}',
+                                  subtitle: 'Total pendiente',
+                                  color: Colors.redAccent,
+                                  onTap: () => _mostrarModalPagosPendientes(context: context, pagosPendientes: pagosPendientes, proximaFecha: fechaProximoPagoStr, totalDeuda: cuentasPorPagar),
+                                ),
+                                _buildInsightCard(
+                                  icon: Icons.local_shipping_rounded,
+                                  title: 'Próximo Pago',
+                                  value: nombreProximoProveedor,
+                                  subtitle: 'Vence: $fechaProximoPagoStr',
+                                  color: Colors.deepPurple,
+                                  onTap: () => _mostrarModalPagosPendientes(context: context, pagosPendientes: pagosPendientes, proximaFecha: fechaProximoPagoStr, totalDeuda: cuentasPorPagar),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 32),
+
+                            const Text('Ingresos por Día', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+                            const SizedBox(height: 16),
+                            Container(
+                              height: 300,
+                              padding: const EdgeInsets.only(top: 30, right: 20, left: 10, bottom: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+                              ),
+                              child: _buildModernBarChart(ingresosPorDia),
+                            ),
+                            const SizedBox(height: 32),
+
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: _buildRankingList('Más Vendidos', top5, Colors.amber)),
+                                const SizedBox(width: 16),
+                                Expanded(child: _buildRankingList('Menos Vendidos', bottom5, Colors.redAccent)),
+                              ],
+                            ),
+                            
+                            // --- NUEVO: SECCIÓN DE ÚLTIMAS TRANSACCIONES ---
+                            const SizedBox(height: 32),
+                            const Text('Últimas Transacciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+                            const SizedBox(height: 16),
+                            _buildUltimasTransacciones(ultimas5Ventas),
+
+                            const SizedBox(height: 40),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
-                ),
-              ),
-            ),
-          ],
+                );
+              },
+            );
+          },
         ),
       ),
     );
   }
 
-  // --- GRÁFICA DE BARRAS MODERNIZADA ---
+  Future<void> _generarYMostrarPDF({
+    required String rango,
+    required double totalIngresos,
+    required double gananciaNeta,
+    required int totalVentas,
+    required double cuentasPorPagar,
+    required List<MapEntry<String, int>> top5,
+  }) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Header(
+                level: 0,
+                child: pw.Text('Reporte Financiero', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+              ),
+              pw.Text('Filtro aplicado: $rango', style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
+              pw.SizedBox(height: 24),
+              
+              pw.Text('Resumen General', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Divider(),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Ingresos Brutos:'),
+                  pw.Text('\$${totalIngresos.toStringAsFixed(2)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                ]
+              ),
+              pw.SizedBox(height: 8),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Ganancia Neta:'),
+                  pw.Text('\$${gananciaNeta.toStringAsFixed(2)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                ]
+              ),
+              pw.SizedBox(height: 8),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Total de Ventas Realizadas:'),
+                  pw.Text('$totalVentas', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                ]
+              ),
+              pw.SizedBox(height: 8),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Cuentas por Pagar (Deuda):'),
+                  pw.Text('\$${cuentasPorPagar.toStringAsFixed(2)}', style: pw.TextStyle(color: PdfColors.red800, fontWeight: pw.FontWeight.bold)),
+                ]
+              ),
+              pw.SizedBox(height: 32),
+
+              pw.Text('Top 5 Productos Más Vendidos', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Divider(),
+              ...top5.map((producto) => pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(producto.key),
+                    pw.Text('${producto.value} unds.', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+              )),
+              
+              pw.Spacer(),
+              pw.Center(
+                child: pw.Text('Reporte generado automáticamente el ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey500))
+              )
+            ],
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'Reporte_Financiero_$rango.pdf',
+    );
+  }
+
   Widget _buildModernBarChart(Map<int, double> ingresosPorDia) {
     double maxY = ingresosPorDia.values.isEmpty ? 1 : ingresosPorDia.values.reduce((a, b) => a > b ? a : b);
     if (maxY == 0) maxY = 100;
@@ -357,11 +419,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                   case 6: text = 'Sáb'; break;
                   case 7: text = 'Dom'; break;
                 }
-                return SideTitleWidget(
-                  axisSide: meta.axisSide,
-                  space: 8,
-                  child: Text(text, style: style),
-                );
+                return SideTitleWidget(axisSide: meta.axisSide, space: 8, child: Text(text, style: style));
               },
             ),
           ),
@@ -390,17 +448,20 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
             barRods: [
               BarChartRodData(
                 toY: entry.value,
-                width: 26,
+                width: 26, 
                 gradient: const LinearGradient(
-                  colors: [Color(0xff362419), Color(0xff755845)],
+                  colors: [
+                    Color(0xff362419), 
+                    Color(0xff755845), 
+                  ],
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                 ),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)), 
                 backDrawRodData: BackgroundBarChartRodData(
                   show: true,
                   toY: chartMaxY,
-                  color: Colors.grey.shade100,
+                  color: Colors.grey.shade100, 
                 ),
               ),
             ],
@@ -408,6 +469,17 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
         }).toList(),
       ),
     );
+  }
+
+  bool _entraEnFiltro(DateTime fecha, DateTime ahora) {
+    if (_rangoSeleccionado == 'Hoy') {
+      return fecha.day == ahora.day && fecha.month == ahora.month && fecha.year == ahora.year;
+    } else if (_rangoSeleccionado == 'Esta Semana') {
+      return ahora.difference(fecha).inDays <= 7;
+    } else if (_rangoSeleccionado == 'Este Mes') {
+      return fecha.month == ahora.month && fecha.year == ahora.year;
+    }
+    return true;
   }
 
   Widget _buildStatCard(IconData icon, String value, String title, Color color) {
@@ -523,6 +595,76 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
       ),
     );
   }
+
+  // --- WIDGET DE ÚLTIMAS TRANSACCIONES ---
+  Widget _buildUltimasTransacciones(List<dynamic> ventas) {
+    if (ventas.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: const Center(
+          child: Text('No hay transacciones recientes en este periodo.', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: ListView.separated(
+        shrinkWrap: true, 
+        physics: const NeverScrollableScrollPhysics(), 
+        itemCount: ventas.length,
+        separatorBuilder: (context, index) => Divider(color: Colors.grey.shade200, height: 1),
+        itemBuilder: (context, index) {
+          final data = ventas[index].data() as Map<String, dynamic>;
+          final total = (data['total'] ?? 0).toDouble();
+          final fecha = data.containsKey('fecha') ? (data['fecha'] as Timestamp).toDate().toLocal() : DateTime.now();
+          final horaStr = '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check, color: Colors.green.shade600, size: 20),
+                ),
+                const SizedBox(width: 16),
+                
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Venta completada', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Color(0xff362419))),
+                      const SizedBox(height: 4),
+                      Text('Hora: $horaStr', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    ],
+                  ),
+                ),
+                
+                Text(
+                  '\$${total.toStringAsFixed(2)}',
+                  style: TextStyle(color: Colors.green.shade600, fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
   
   void _mostrarModalPagosPendientes({
     required BuildContext context,
@@ -557,11 +699,21 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                           child: const Icon(Icons.receipt_long_rounded, color: Color(0xff362419), size: 24),
                         ),
                         const SizedBox(width: 12),
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Pagos a Proveedores', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xff362419))),
-                            Text('Cuentas por pagar pendientes de liquidación', style: TextStyle(fontSize: 12, color: Color(0xff55453A))),
+                          children: const [
+                            Text(
+                              'Pagos a Proveedores',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xff362419),
+                              ),
+                            ),
+                            Text(
+                              'Cuentas por pagar pendientes de liquidación',
+                              style: TextStyle(fontSize: 12, color: Color(0xff55453A)),
+                            ),
                           ],
                         ),
                       ],
@@ -575,6 +727,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                   ],
                 ),
                 const SizedBox(height: 20),
+
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -589,7 +742,10 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                         children: [
                           const Text('Deuda Total', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 4),
-                          Text('\$${totalDeuda.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                          Text(
+                            '\$${totalDeuda.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                          ),
                         ],
                       ),
                       Container(height: 30, width: 1, color: Colors.grey.shade300),
@@ -597,15 +753,23 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                         children: [
                           const Text('Próximo Vencimiento', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 4),
-                          Text(proximaFecha, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+                          Text(
+                            proximaFecha,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xff362419)),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text('Detalle de Pagos Pendientes', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+
+                const Text(
+                  'Detalle de Pagos Pendientes',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xff362419)),
+                ),
                 const SizedBox(height: 12),
+
                 Expanded(
                   child: pagosPendientes.isEmpty
                       ? Center(
@@ -629,7 +793,13 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: Colors.grey.shade200),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -638,13 +808,23 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(pago['proveedor'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xff362419))),
+                                        Text(
+                                          pago['proveedor'],
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: Color(0xff362419),
+                                          ),
+                                        ),
                                         const SizedBox(height: 6),
                                         Row(
                                           children: [
                                             Icon(Icons.calendar_today_rounded, size: 13, color: Colors.grey.shade600),
                                             const SizedBox(width: 6),
-                                            Text('Fecha de pago: ${pago['fechaStr']}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
+                                            Text(
+                                              'Fecha de pago: ${pago['fechaStr']}',
+                                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                                            ),
                                           ],
                                         ),
                                       ],
@@ -658,7 +838,11 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                                     ),
                                     child: Text(
                                       'Pago pendiente de \$${(pago['monto'] as double).toStringAsFixed(2)}',
-                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.redAccent),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                        color: Colors.redAccent,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -668,11 +852,15 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                         ),
                 ),
                 const SizedBox(height: 16),
+
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(foregroundColor: const Color(0xff362419), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xff362419),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
                     child: const Text('Cerrar', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
