@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// ============================================================================
-// MODELO DE DATOS PARA EL CARRITO
-// ============================================================================
 class ItemCarrito {
   final String id;
   final String nombre;
@@ -25,9 +23,6 @@ class ItemCarrito {
   double get subtotal => precio * cantidad;
 }
 
-// ============================================================================
-// PÁGINA PRINCIPAL DE VENTAS
-// ============================================================================
 class VentasPage extends StatefulWidget {
   const VentasPage({super.key});
 
@@ -42,6 +37,7 @@ class _VentasPageState extends State<VentasPage> {
   final List<ItemCarrito> _carrito = [];
   String? _metodoPago;
   final TextEditingController _efectivoController = TextEditingController();
+  bool _procesando = false;
 
   double get _totalVenta => _carrito.fold(0.0, (total, item) => total + item.subtotal);
 
@@ -51,6 +47,22 @@ class _VentasPageState extends State<VentasPage> {
     'Cold Brew Nocturno': 'https://i.postimg.cc/YqYtdDMs/coldbrew.jpg',
     'Purr Croissant': 'https://i.postimg.cc/4dDrtZK2/croissant.jpg',
     'Michi-Muffin': 'https://i.postimg.cc/Hxqf5HJB/muffin.jpg',
+    'Gato Negro': 'https://i.postimg.cc/ry0cWXtf/Gato-Negro.jpg',
+    'Persa Blanco': 'https://i.postimg.cc/xjJYHDbR/Persa-Blanco.jpg',
+    'Ronroneo de Caramelo': 'https://i.postimg.cc/tRKbNShN/Ronroneo-de-Caramelo.jpg',
+    'Zarpazo Espresso': 'https://i.postimg.cc/sfkz46pc/Zarpazo-Espresso.jpg',
+    'Chocolate Purrfecto': 'https://i.postimg.cc/3rshFSg1/Chocolate-Purrfecto.jpg',
+    'Michi Iced Latte': 'https://i.postimg.cc/447ZtkhQ/Michi-Iced-Latte.jpg',
+    'Matcha Gato Relax': 'https://i.postimg.cc/qBh0nVC2/Matcha-Gato-Relax.jpg',
+    'Limonada del Gato con Botas': 'https://i.postimg.cc/ry0cWXtS/Limonada-del-Gato-con-Botas.jpg',
+    'Affogato "Cozy Murr"': 'https://i.postimg.cc/pVhx8bn0/Affogato-Cozy-Murr.jpg',
+    'Boba Kat': 'https://i.postimg.cc/FFdmc5JG/Boba-Kat.jpg',
+    'Cat-shake': 'https://i.postimg.cc/dQbFjH8n/Cat-shake.jpg',
+    'Galletas "Huellitas de Amor"': 'https://i.postimg.cc/c1gZYy8R/Galletas-Huellitas-de-Amor.jpg',
+    'Cheesecake "Tres Colores"': 'https://i.postimg.cc/jqwKN0Jg/Cheesecake-Tres-Colores.jpg',
+    'Brownie "Dormilón"': 'https://i.postimg.cc/G38rYwsG/Brownie-Dormilon.jpg',
+    'Michi Donut': 'https://i.postimg.cc/J7DmJVBx/Michi-Donut.jpg',
+    'Pastel "Choco-Meow"': 'https://i.postimg.cc/KckFLSgs/Pastel-Choco-Meow.jpg',
   };
 
   void _agregarAlCarrito(DocumentSnapshot producto) {
@@ -116,6 +128,9 @@ class _VentasPageState extends State<VentasPage> {
     });
   }
 
+  // ============================================================================
+  // ✅ PROCESAR VENTA OPTIMIZADO Y SIN BLOQUEOS
+  // ============================================================================
   Future<void> _procesarVenta() async {
     if (_carrito.isEmpty) {
       if (!mounted) return;
@@ -131,31 +146,58 @@ class _VentasPageState extends State<VentasPage> {
       );
       return;
     }
+    if (_metodoPago == 'efectivo') {
+      final efectivo = double.tryParse(_efectivoController.text) ?? 0.0;
+      if (efectivo < _totalVenta) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('El efectivo ingresado es insuficiente'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+        );
+        return;
+      }
+    }
 
     if (!mounted) return;
-    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xff362419))));
+    setState(() => _procesando = true);
+    
+    // Captura preventiva de valores antes de reiniciar el carrito
+    final double totalFinalVenta = _totalVenta;
+    final double efectivoRecibido = double.tryParse(_efectivoController.text) ?? 0.0;
+
+    // Mostrar loading en el Root Navigator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true, 
+      builder: (dialogCtx) => const Center(
+        child: CircularProgressIndicator(color: Color(0xff362419)),
+      ),
+    );
 
     try {
       final usuarioEmail = FirebaseAuth.instance.currentUser?.email ?? 'desconocido';
-      final itemsParaGuardar = _carrito.map((item) => {
-        'id': item.id,
-        'nombre': item.nombre,
-        'precio': item.precio,
-        'cantidad': item.cantidad,
-      }).toList();
-      final total = _totalVenta;
-      final metodo = _metodoPago;
-
+      
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         for (var item in _carrito) {
           final productoRef = _productosRef.doc(item.id);
           final productoDoc = await transaction.get(productoRef);
           
-          if (!productoDoc.exists) throw Exception('Producto ${item.nombre} ya no existe');
+          if (!productoDoc.exists) {
+            throw Exception('El producto "${item.nombre}" fue eliminado o no existe.');
+          }
           
-          final stockActual = ((productoDoc.data() as Map<String, dynamic>?)?['cantidad'] as num?)?.toInt() ?? 0;
+          final data = productoDoc.data() as Map<String, dynamic>?;
+          int stockActual = 0;
+          if (data != null && data['cantidad'] != null) {
+            if (data['cantidad'] is num) {
+              stockActual = (data['cantidad'] as num).toInt();
+            } else if (data['cantidad'] is String) {
+              stockActual = int.tryParse(data['cantidad'] as String) ?? 0;
+            }
+          }
+
           if (stockActual < item.cantidad) {
-            throw Exception('Stock insuficiente para ${item.nombre}');
+            throw Exception('Stock insuficiente para "${item.nombre}". Disponible: $stockActual');
           }
 
           transaction.update(productoRef, {
@@ -164,70 +206,91 @@ class _VentasPageState extends State<VentasPage> {
           });
         }
 
+        final itemsParaGuardar = _carrito.map((item) => {
+          'id': item.id,
+          'nombre': item.nombre,
+          'precio': item.precio.toDouble(),
+          'cantidad': item.cantidad,
+        }).toList();
+
         final nuevaVentaRef = _ventasRef.doc();
         transaction.set(nuevaVentaRef, {
           'productos': itemsParaGuardar,
-          'total': total,
-          'metodo_pago': metodo,
+          'total': totalFinalVenta.toDouble(),
+          'metodo_pago': _metodoPago,
           'fecha': FieldValue.serverTimestamp(),
           'usuario': usuarioEmail,
         });
       });
 
+      // ✅ Cierra el diálogo de carga correctamente desde la raíz
       if (mounted) {
-        Navigator.of(context).pop();
-        _mostrarExitoDialog();
+        Navigator.of(context, rootNavigator: true).pop();
       }
-    } catch (e) {
+
       if (mounted) {
-        Navigator.of(context).pop();
+        setState(() => _procesando = false);
+        _mostrarExito(totalFinalVenta, efectivoRecibido);
+      }
+      
+    } catch (e) {
+      // ✅ Cierra el diálogo de carga en caso de error inesperado
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        setState(() => _procesando = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text('Error: $e'), 
+            backgroundColor: Colors.red, 
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     }
   }
 
-  void _mostrarExitoDialog() {
-    final efectivo = double.tryParse(_efectivoController.text) ?? 0.0;
-    final cambio = efectivo - _totalVenta;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 8),
-            Text('Venta Exitosa', style: TextStyle(color: Color(0xff362419), fontWeight: FontWeight.bold)),
-          ],
-        ),
+  // ============================================================================
+  // ✅ TICKET DE ÉXITO FIJO Y CORREGIDO
+  // ============================================================================
+  void _mostrarExito(double totalCobrado, double efectivoRecibido) {
+    if (!mounted) return;
+    
+    final cambio = efectivoRecibido - totalCobrado;
+    
+    setState(() {
+      _carrito.clear();
+      _metodoPago = null;
+      _efectivoController.clear();
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Total: \$${_totalVenta.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            if (_metodoPago == 'efectivo') ...[
-              const SizedBox(height: 8),
-              Text('Efectivo: \$${efectivo.toStringAsFixed(2)}'),
-              Text('Cambio: \$${cambio.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
+            const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.greenAccent, size: 28),
+                SizedBox(width: 12),
+                Text('¡Venta Procesada con Éxito!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(color: Colors.white24),
+            Text('Total cobrado: \$${totalCobrado.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16)),
+            if (efectivoRecibido > 0) ...[
+              const SizedBox(height: 4),
+              Text('Efectivo recibido: \$${efectivoRecibido.toStringAsFixed(2)}'),
+              Text('Cambio a entregar: \$${cambio.toStringAsFixed(2)}', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              setState(() {
-                _carrito.clear();
-                _metodoPago = null;
-                _efectivoController.clear();
-              });
-            },
-            child: const Text('Aceptar', style: TextStyle(color: Color(0xff362419), fontWeight: FontWeight.bold)),
-          ),
-        ],
+        backgroundColor: const Color(0xff362419),
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -238,35 +301,38 @@ class _VentasPageState extends State<VentasPage> {
       builder: (context, outerConstraints) {
         final bool isMobile = outerConstraints.maxWidth < 800;
 
-        return Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Ventas 💰', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xff362419))),
-              const Text('Coffee Cat - Punto de venta', style: TextStyle(color: Color(0xff55453A), fontSize: 12)),
-              const SizedBox(height: 20),
-              Expanded(
-                child: isMobile
-                    ? SingleChildScrollView(
-                        child: Column(
+        return Scaffold(
+          backgroundColor: const Color(0xFFF4F6F8),
+          body: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Ventas 💰', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xff362419))),
+                const Text('Coffee Cat - Punto de venta', style: TextStyle(color: Color(0xff55453A), fontSize: 12)),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: isMobile
+                      ? SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              SizedBox(height: 400, child: _buildCatalogo()),
+                              const SizedBox(height: 16),
+                              SizedBox(height: 400, child: _buildCarrito()),
+                            ],
+                          ),
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SizedBox(height: 400, child: _buildCatalogo()),
-                            const SizedBox(height: 16),
-                            SizedBox(height: 400, child: _buildCarrito()),
+                            Expanded(flex: 2, child: _buildCatalogo()),
+                            const SizedBox(width: 20),
+                            Expanded(flex: 1, child: _buildCarrito()),
                           ],
                         ),
-                      )
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(flex: 2, child: _buildCatalogo()),
-                          const SizedBox(width: 20),
-                          Expanded(flex: 1, child: _buildCarrito()),
-                        ],
-                      ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -395,7 +461,8 @@ class _VentasPageState extends State<VentasPage> {
               const SizedBox(height: 8),
               TextField(
                 controller: _efectivoController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
                 decoration: const InputDecoration(
                   labelText: 'Efectivo recibido', 
                   prefixText: '\$ ', 
@@ -414,8 +481,14 @@ class _VentasPageState extends State<VentasPage> {
                   foregroundColor: Colors.white, 
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
                 ),
-                onPressed: _carrito.isEmpty ? null : _procesarVenta,
-                child: const Text('PROCESAR VENTA', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                onPressed: _procesando || _carrito.isEmpty ? null : _procesarVenta,
+                child: _procesando
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text('PROCESAR VENTA', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -430,10 +503,6 @@ class _VentasPageState extends State<VentasPage> {
     super.dispose();
   }
 }
-
-// ============================================================================
-// WIDGETS EXTRAÍDOS (Aíslan los rebuilds para máximo rendimiento)
-// ============================================================================
 
 class _ProductoCard extends StatelessWidget {
   final DocumentSnapshot producto;
@@ -514,7 +583,7 @@ class _ProductoCard extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.red[800],
+                            color: Colors.red,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Text('Agotado', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
@@ -582,7 +651,7 @@ class _CartItemWidget extends StatelessWidget {
                   fit: BoxFit.cover,
                   cacheWidth: 80,
                   cacheHeight: 80,
-                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.local_cafe, size: 24), // ✅ CORREGIDO
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.local_cafe, size: 24),
                 ),
               )
             : const Icon(Icons.local_cafe, size: 24),
