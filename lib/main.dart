@@ -41,15 +41,7 @@ class MyApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: const Color(0xffF5F0EB),
         fontFamily: 'Roboto',
-        // ✅ scrollBehavior va AQUÍ dentro de ThemeData
-        scrollBehavior: const MaterialScrollBehavior().copyWith(
-          dragDevices: {
-            PointerDeviceKind.mouse,
-            PointerDeviceKind.touch,
-            PointerDeviceKind.stylus,
-            PointerDeviceKind.trackpad,
-          },
-        ),
+        // ✅ scrollBehavior ELIMINADO - no es necesario
       ),
       routerConfig: appRouter,
     );
