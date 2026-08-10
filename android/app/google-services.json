@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "746032600431",
+    "project_id": "coffee-cat-8b348",
+    "storage_bucket": "coffee-cat-8b348.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:746032600431:android:6b926283f42e1aeebb049a",
+        "android_client_info": {
+          "package_name": "com.example.conexion_coffee_cat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYpUFtAd0e3E4C3fAx2ldmthgJ3dFrelM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:746032600431:android:e61f4226be008a82bb049a",
+        "android_client_info": {
+          "package_name": "com.example.login_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYpUFtAd0e3E4C3fAx2ldmthgJ3dFrelM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

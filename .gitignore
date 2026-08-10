@@ -1,0 +1,25 @@
+# Carpetas de compilación y dependencias de Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+build/
+flutter_assets/
+
+# Archivos específicos de sistemas operativos
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Configuración del editor (VS Code / Android Studio)
+.vscode/
+*.iml
+.idea/
+
+# Carpetas raras de compilación web que se colaron
+fbd150ec65fc68b3f4f6194eb1fd258e/
+ffc0d5e8ce619cc4b8f03da89faa87ff/
