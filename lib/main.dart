@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'app_router.dart';
@@ -5,16 +6,20 @@ import 'app_router.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: 'AIzaSyBGPH0Q0L2rUgTKGoAkHXkMIOhZ7VVdibs',
-      appId: '1:746032600431:web:2e9fea79a1c68169bb049a',
-      messagingSenderId: '746032600431',
-      projectId: 'coffee-cat-8b348',
-      authDomain: 'coffee-cat-8b348.firebaseapp.com',
-      storageBucket: 'coffee-cat-8b348.firebasestorage.app',
-    ),
-  );
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: 'AIzaSyBGPH0Q0L2rUgTKGoAkHXkMIOhZ7VVdibs',
+        appId: '1:746032600431:web:2e9fea79a1c68169bb049a',
+        messagingSenderId: '746032600431',
+        projectId: 'coffee-cat-8b348',
+        authDomain: 'coffee-cat-8b348.firebaseapp.com',
+        storageBucket: 'coffee-cat-8b348.firebasestorage.app',
+      ),
+    );
+  } else {
+    Firebase.app();
+  }
 
   runApp(const MyApp());
 }
@@ -36,6 +41,15 @@ class MyApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: const Color(0xffF5F0EB),
         fontFamily: 'Roboto',
+        // ✅ scrollBehavior va AQUÍ dentro de ThemeData
+        scrollBehavior: const MaterialScrollBehavior().copyWith(
+          dragDevices: {
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.touch,
+            PointerDeviceKind.stylus,
+            PointerDeviceKind.trackpad,
+          },
+        ),
       ),
       routerConfig: appRouter,
     );
